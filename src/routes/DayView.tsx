@@ -1,24 +1,21 @@
 import { useState } from 'react'
 import { useTabs } from '@/hooks/useTabs'
-import { useItems, useToggleItem, useReorderItems } from '@/hooks/useItems'
+import { useItems, useToggleItem, useReorderItems, itemsKey } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
-import { useSelectedTab } from '@/hooks/useSelectedTab'
 import { addDays, formatLargo, esHoy, todayISO } from '@/lib/dates'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
 import Chevron from '@/components/ui/Chevron'
 import { SortableList, SortableRow } from '@/components/ui/SortableList'
+import RepeatIcon from '@/components/ui/RepeatIcon'
 import type { Item } from '@/types/database.types'
 
 export default function DayView() {
   const [date, setDate] = useSelectedDate()
   const { data: tabs } = useTabs()
-  const [tabFiltro] = useSelectedTab()
-  const { data: todosLosItems, isLoading, error } = useItems(date, date)
-
-  // La barra inferior filtra todas las vistas por igual.
-  const items = tabFiltro ? todosLosItems?.filter((i) => i.tab_id === tabFiltro) : todosLosItems
-  const toggle = useToggleItem(date, date)
-  const reorder = useReorderItems(date, date)
+  const { data: items, isLoading, error } = useItems(date, date)
+  const rangoKey = itemsKey(date, date)
+  const toggle = useToggleItem(rangoKey)
+  const reorder = useReorderItems(rangoKey)
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
@@ -121,10 +118,11 @@ export default function DayView() {
               />
               <button onClick={() => setEditing(item)} className="text-left flex-1 min-w-0">
                 <span
-                  className={`text-sm block ${
+                  className={`flex items-center gap-1.5 text-sm ${
                     item.completed ? 'line-through text-text-muted' : ''
                   }`}
                 >
+                  {item.recurrence && <RepeatIcon className="shrink-0 text-text-muted" />}
                   {item.title}
                 </span>
                 {detalle && <span className="text-xs text-text-secondary">{detalle}</span>}
@@ -151,8 +149,6 @@ export default function DayView() {
           tabs={tabs}
           item={editing === 'new' ? undefined : editing}
           defaultDate={date}
-          defaultTabId={tabFiltro}
-          range={{ from: date, to: date }}
           onClose={() => setEditing(null)}
         />
       )}

@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
 
 const views = [
-  { path: '/mes', label: 'Mes' },
-  { path: '/semana', label: 'Semana' },
   { path: '/dia', label: 'Día' },
+  { path: '/semana', label: 'Semana' },
+  { path: '/mes', label: 'Mes' },
   { path: '/gastos', label: 'Gastos' }
 ]
 

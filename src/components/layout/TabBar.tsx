@@ -1,6 +1,6 @@
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTabs, useReorderTabs } from '@/hooks/useTabs'
-import { useSelectedTab } from '@/hooks/useSelectedTab'
 import TabEditorModal from '@/components/tabs/TabEditorModal'
 import { SortableList, SortableRow } from '@/components/ui/SortableList'
 import type { TabWithFields } from '@/lib/queries/tabs'
@@ -11,15 +11,15 @@ import type { TabWithFields } from '@/lib/queries/tabs'
  * El botón de crear va primero y fijo (sticky) para que no se pierda cuando
  * la lista se hace larga y hay que scrollear.
  *
- * Un click cambia la pestaña activa, que filtra todas las vistas; para editar
- * hay que tocar el lápiz, que aparece solo en la activa. Si el click abriera
- * el editor, tocar una pestaña para "ir a ella" —el gesto natural con esta
- * forma— daría un diálogo en vez de navegar.
+ * Tocar una pestaña abre su lista completa de tareas (/pestana/:id); el lápiz,
+ * que aparece solo en la activa, edita la pestaña en sí. Van separados porque
+ * con forma de solapa el gesto natural es "ir a ella", no "configurarla".
  */
 export default function TabBar() {
   const { data: tabs, isLoading, error } = useTabs()
   const reorder = useReorderTabs()
-  const [tabId, setTabId] = useSelectedTab()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [editando, setEditando] = useState<TabWithFields | 'new' | null>(null)
 
   return (
@@ -28,27 +28,18 @@ export default function TabBar() {
         <div className="flex items-stretch gap-1 overflow-x-auto px-2 py-1.5">
           <button
             onClick={() => setEditando('new')}
-            className="sticky left-0 z-10 shrink-0 rounded bg-surface border border-border px-3 py-1.5 text-sm font-medium hover:bg-bg transition-colors whitespace-nowrap"
+            className="sticky left-0 z-10 shrink-0 rounded border border-border bg-surface px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors hover:bg-bg"
           >
             + Nueva pestaña
           </button>
 
-          {tabs && tabs.length > 0 && (
-            <button
-              onClick={() => setTabId(null)}
-              className={`shrink-0 rounded px-3 py-1.5 text-sm whitespace-nowrap transition-colors ${
-                tabId === null
-                  ? 'bg-surface font-medium shadow-sm'
-                  : 'text-text-secondary hover:bg-surface/60'
-              }`}
-            >
-              Todas
-            </button>
+          {isLoading && (
+            <span className="px-2 py-1.5 text-sm text-text-muted italic">Cargando…</span>
           )}
-
-          {isLoading && <span className="px-2 py-1.5 text-sm text-text-muted italic">Cargando…</span>}
           {error && (
-            <span className="px-2 py-1.5 text-sm text-danger">No se pudieron cargar las pestañas.</span>
+            <span className="px-2 py-1.5 text-sm text-danger">
+              No se pudieron cargar las pestañas.
+            </span>
           )}
 
           {tabs && tabs.length > 0 && (
@@ -58,7 +49,7 @@ export default function TabBar() {
               className="flex items-stretch gap-1"
             >
               {tabs.map((tab) => {
-                const activa = tab.id === tabId
+                const activa = pathname === `/pestana/${tab.id}`
                 return (
                   <SortableRow
                     key={tab.id}
@@ -72,11 +63,11 @@ export default function TabBar() {
                     }}
                   >
                     <button
-                      onClick={() => setTabId(tab.id)}
-                      className={`py-1.5 px-1 text-sm whitespace-nowrap max-w-40 truncate ${
+                      onClick={() => navigate(`/pestana/${tab.id}`)}
+                      className={`max-w-40 truncate px-1 py-1.5 text-sm whitespace-nowrap ${
                         activa ? 'font-semibold' : ''
                       }`}
-                      title={tab.name}
+                      title={`Ver las tareas de "${tab.name}"`}
                     >
                       {tab.name}
                     </button>

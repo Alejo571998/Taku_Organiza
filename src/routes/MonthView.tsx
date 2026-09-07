@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useTabs } from '@/hooks/useTabs'
 import { useItems } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
-import { useSelectedTab } from '@/hooks/useSelectedTab'
 import {
   monthKey,
   monthStart,
@@ -34,12 +33,8 @@ export default function MonthView() {
   const to = celdas[celdas.length - 1]
 
   const { data: tabs } = useTabs()
-  const [tabFiltro] = useSelectedTab()
-  const { data: todosLosItems, isLoading, error } = useItems(from, to)
-
-  // La barra inferior filtra todas las vistas por igual.
-  const items = tabFiltro ? todosLosItems?.filter((i) => i.tab_id === tabFiltro) : todosLosItems
-  const [editing, setEditing] = useState<Item | null>(null)
+  const { data: items, isLoading, error } = useItems(from, to)
+  const [editing, setEditing] = useState<Item | { dia: string } | null>(null)
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
 
@@ -76,6 +71,13 @@ export default function MonthView() {
             Este mes
           </button>
         )}
+        <button
+          onClick={() => setEditing({ dia: mes === monthKey(todayISO()) ? todayISO() : monthStart(mes) })}
+          disabled={!tabs || tabs.length === 0}
+          className="ml-auto rounded bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+        >
+          + Ítem
+        </button>
       </div>
 
       {isLoading && <p className="text-sm text-text-muted italic">Cargando...</p>}
@@ -143,6 +145,15 @@ export default function MonthView() {
                   +{resto} más
                 </button>
               )}
+
+              {/* Relleno clickeable: hace que tocar el hueco de la celda lleve
+                  al día, sin robarle el click a los ítems de arriba. */}
+              <button
+                onClick={() => navigate(`/dia?d=${dia}`)}
+                className="min-h-4 flex-1"
+                aria-label={`Ver el día ${dia}`}
+                title="Ver el día"
+              />
             </div>
           )
         })}
@@ -151,10 +162,8 @@ export default function MonthView() {
       {editing && tabs && (
         <ItemEditorModal
           tabs={tabs}
-          item={editing}
-          defaultDate={editing.date}
-          defaultTabId={tabFiltro}
-          range={{ from, to }}
+          item={'id' in editing ? editing : undefined}
+          defaultDate={'id' in editing ? editing.date : editing.dia}
           onClose={() => setEditing(null)}
         />
       )}

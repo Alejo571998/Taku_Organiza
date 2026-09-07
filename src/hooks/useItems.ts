@@ -1,34 +1,54 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryKey } from '@tanstack/react-query'
 import {
   fetchItems,
+  fetchItemsByTab,
   saveItem,
   setItemCompleted,
   deleteItem,
-  reorderItems
+  reorderItems,
+  createRecurringItems,
+  deleteItemSeries
 } from '@/lib/queries/items'
 import type { Item } from '@/types/database.types'
 
-export function itemsKey(from: string, to: string) {
-  return ['items', from, to] as const
+/** Ítems de un rango de fechas (día, semana, mes, gastos). */
+export function itemsKey(from: string, to: string): QueryKey {
+  return ['items', 'rango', from, to]
+}
+
+/** Ítems de una pestaña, sin importar la fecha. */
+export function itemsByTabKey(tabId: string): QueryKey {
+  return ['items', 'pestana', tabId]
 }
 
 export function useItems(from: string, to: string) {
   return useQuery({ queryKey: itemsKey(from, to), queryFn: () => fetchItems(from, to) })
 }
 
-export function useSaveItem(from: string, to: string) {
+export function useItemsByTab(tabId: string) {
+  return useQuery({ queryKey: itemsByTabKey(tabId), queryFn: () => fetchItemsByTab(tabId) })
+}
+
+/**
+ * Guardar y borrar invalidan TODA la familia ['items'] y no una clave puntual:
+ * al editar se puede cambiar la fecha o la pestaña de un ítem, así que la lista
+ * de la que sale y la lista a la que entra son distintas, y acertarle a las dos
+ * a mano es la clase de cosa que se desincroniza en silencio.
+ */
+export function useSaveItem() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: saveItem,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: itemsKey(from, to) })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['items'] })
   })
 }
 
-export function useDeleteItem(from: string, to: string) {
+export function useDeleteItem() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: deleteItem,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: itemsKey(from, to) })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['items'] })
   })
 }
 
@@ -37,9 +57,8 @@ export function useDeleteItem(from: string, to: string) {
  * optimista: esperar el round trip para ver el tilde se siente roto. Si el
  * servidor rechaza, onError deja la lista como estaba.
  */
-export function useToggleItem(from: string, to: string) {
+export function useToggleItem(key: QueryKey) {
   const queryClient = useQueryClient()
-  const key = itemsKey(from, to)
 
   return useMutation({
     mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>
@@ -58,14 +77,13 @@ export function useToggleItem(from: string, to: string) {
       if (context?.previous) queryClient.setQueryData(key, context.previous)
     },
 
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['items'] })
   })
 }
 
 /** Mismo criterio optimista que el tilde: el reordenamiento no puede titilar. */
-export function useReorderItems(from: string, to: string) {
+export function useReorderItems(key: QueryKey) {
   const queryClient = useQueryClient()
-  const key = itemsKey(from, to)
 
   return useMutation({
     mutationFn: reorderItems,
@@ -84,6 +102,22 @@ export function useReorderItems(from: string, to: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(key, ctx.previous)
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key })
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['items'] })
+  })
+}
+
+export function useCreateRecurringItems() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createRecurringItems,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['items'] })
+  })
+}
+
+export function useDeleteItemSeries() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteItemSeries,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['items'] })
   })
 }

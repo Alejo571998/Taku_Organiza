@@ -8,6 +8,7 @@ import MonthView from './routes/MonthView'
 import WeekView from './routes/WeekView'
 import DayView from './routes/DayView'
 import ExpensesView from './routes/ExpensesView'
+import TabListView from './routes/TabListView'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/semana" element={<WeekView />} />
             <Route path="/dia" element={<DayView />} />
             <Route path="/gastos" element={<ExpensesView />} />
+            <Route path="/pestana/:tabId" element={<TabListView />} />
           </Route>
         </Route>
       </Routes>

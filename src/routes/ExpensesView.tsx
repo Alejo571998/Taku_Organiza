@@ -3,7 +3,6 @@ import { useTabs } from '@/hooks/useTabs'
 import { useItems } from '@/hooks/useItems'
 import { buildExpenseReport, formatARS } from '@/lib/expenses'
 import { currentMonthKey, lastMonths, monthStart, monthEnd, formatMes } from '@/lib/dates'
-import { useSelectedTab } from '@/hooks/useSelectedTab'
 
 const RANGOS = [3, 6, 12]
 
@@ -14,9 +13,7 @@ export default function ExpensesView() {
   const from = monthStart(months[0])
   const to = monthEnd(months[months.length - 1])
 
-  const [tabFiltro] = useSelectedTab()
-  const { data: todasLasTabs } = useTabs()
-  const tabs = tabFiltro ? todasLasTabs?.filter((t) => t.id === tabFiltro) : todasLasTabs
+  const { data: tabs } = useTabs()
   const { data: items, isLoading, error } = useItems(from, to)
 
   const report = useMemo(

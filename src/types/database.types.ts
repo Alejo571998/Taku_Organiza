@@ -27,6 +27,9 @@ export interface Tab {
   amount_field_id: string | null
 }
 
+/** Cada cuánto se repite una tarea. null = no se repite. */
+export type Recurrence = 'daily' | 'weekly' | 'monthly'
+
 export interface Item {
   id: string
   user_id: string
@@ -36,4 +39,7 @@ export interface Item {
   completed: boolean
   sort_order: number
   custom_data: Record<string, unknown>
+  /** Une a todas las ocurrencias de una misma tarea repetida. */
+  series_id: string | null
+  recurrence: Recurrence | null
 }

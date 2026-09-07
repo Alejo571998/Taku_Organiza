@@ -1,7 +1,13 @@
 import { useState } from 'react'
-import { useSaveItem, useDeleteItem } from '@/hooks/useItems'
+import {
+  useSaveItem,
+  useDeleteItem,
+  useCreateRecurringItems,
+  useDeleteItemSeries
+} from '@/hooks/useItems'
+import { ETIQUETA_REPETICION, REPETICIONES } from '@/lib/queries/items'
 import type { TabWithFields } from '@/lib/queries/tabs'
-import type { Item } from '@/types/database.types'
+import type { Item, Recurrence } from '@/types/database.types'
 
 interface Props {
   tabs: TabWithFields[]
@@ -10,8 +16,6 @@ interface Props {
   defaultDate: string
   /** Pestaña con la que arranca un ítem nuevo (la activa en la barra). */
   defaultTabId?: string | null
-  /** Rango de la vista que abrió el modal, para invalidar su cache. */
-  range: { from: string; to: string }
   onClose: () => void
 }
 
@@ -20,16 +24,21 @@ export default function ItemEditorModal({
   item,
   defaultDate,
   defaultTabId,
-  range,
   onClose
 }: Props) {
-  const saveMutation = useSaveItem(range.from, range.to)
-  const deleteMutation = useDeleteItem(range.from, range.to)
+  const saveMutation = useSaveItem()
+  const deleteMutation = useDeleteItem()
+  const recurringMutation = useCreateRecurringItems()
+  const deleteSeriesMutation = useDeleteItemSeries()
 
   const [tabId, setTabId] = useState(item?.tab_id ?? defaultTabId ?? tabs[0]?.id ?? '')
   const [title, setTitle] = useState(item?.title ?? '')
   const [date, setDate] = useState(item?.date ?? defaultDate)
   const [customData, setCustomData] = useState<Record<string, unknown>>(item?.custom_data ?? {})
+  // La repetición solo se ofrece al crear: cambiarla sobre una serie que ya
+  // existe implica decidir qué pasa con las ocurrencias pasadas, las futuras
+  // y las ya tildadas, y eso es una función aparte.
+  const [repeticion, setRepeticion] = useState<Recurrence | ''>('')
   const [error, setError] = useState<string | null>(null)
 
   const activeTab = tabs.find((t) => t.id === tabId)
@@ -50,7 +59,7 @@ export default function ItemEditorModal({
     }
     setError(null)
     try {
-      await saveMutation.mutateAsync({
+      const datos = {
         id: item?.id,
         tabId,
         title: title.trim(),
@@ -62,10 +71,26 @@ export default function ItemEditorModal({
             .filter((f) => customData[f.id] !== undefined && customData[f.id] !== '')
             .map((f) => [f.id, customData[f.id]])
         )
-      })
+      }
+
+      if (!item && repeticion) await recurringMutation.mutateAsync({ ...datos, recurrence: repeticion })
+      else await saveMutation.mutateAsync(datos)
+
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo guardar el ítem.')
+    }
+  }
+
+  async function handleDeleteSeries() {
+    if (!item?.series_id) return
+    if (!window.confirm(`¿Eliminar "${item.title}" y todas sus repeticiones?`)) return
+    setError(null)
+    try {
+      await deleteSeriesMutation.mutateAsync(item.series_id)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo eliminar la serie.')
     }
   }
 
@@ -117,6 +142,46 @@ export default function ItemEditorModal({
           onChange={(e) => setDate(e.target.value)}
           className={`${inputClass} mb-4`}
         />
+
+        {!item && (
+          <>
+            <label className="text-sm text-text-secondary block mb-1">Repetir</label>
+            <select
+              value={repeticion}
+              onChange={(e) => setRepeticion(e.target.value as Recurrence | '')}
+              className={`${inputClass} mb-1`}
+            >
+              <option value="">No se repite</option>
+              {(Object.keys(ETIQUETA_REPETICION) as Recurrence[]).map((r) => (
+                <option key={r} value={r}>
+                  {ETIQUETA_REPETICION[r]}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-text-muted mb-4">
+              {repeticion
+                ? `Se crean ${REPETICIONES[repeticion]} tareas por adelantado. Cada una se tilda por separado.`
+                : 'Se crea una sola tarea, en la fecha elegida.'}
+            </p>
+          </>
+        )}
+
+        {item?.series_id && item.recurrence && (
+          <div className="mb-4 rounded border border-border bg-bg px-3 py-2">
+            <p className="text-xs text-text-secondary">
+              Parte de una serie que se repite: {ETIQUETA_REPETICION[item.recurrence].toLowerCase()}.
+              Los cambios acá afectan solo a esta fecha.
+            </p>
+            <button
+              type="button"
+              onClick={handleDeleteSeries}
+              disabled={deleteSeriesMutation.isPending}
+              className="mt-1 text-xs text-danger underline disabled:opacity-60"
+            >
+              Eliminar la serie completa
+            </button>
+          </div>
+        )}
 
         {fields.length > 0 && (
           <div className="border-t border-border pt-4 mb-4 flex flex-col gap-3">

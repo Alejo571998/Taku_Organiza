@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTabs } from '@/hooks/useTabs'
-import { useItems, useToggleItem } from '@/hooks/useItems'
+import { useItems, useToggleItem, itemsKey } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
-import { useSelectedTab } from '@/hooks/useSelectedTab'
 import {
   addDays,
   weekDays,
@@ -27,12 +26,8 @@ export default function WeekView() {
   const to = dias[6]
 
   const { data: tabs } = useTabs()
-  const [tabFiltro] = useSelectedTab()
-  const { data: todosLosItems, isLoading, error } = useItems(from, to)
-
-  // La barra inferior filtra todas las vistas por igual.
-  const items = tabFiltro ? todosLosItems?.filter((i) => i.tab_id === tabFiltro) : todosLosItems
-  const toggle = useToggleItem(from, to)
+  const { data: items, isLoading, error } = useItems(from, to)
+  const toggle = useToggleItem(itemsKey(from, to))
   const [editing, setEditing] = useState<Item | { dia: string } | null>(null)
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
@@ -69,6 +64,13 @@ export default function WeekView() {
             Esta semana
           </button>
         )}
+        <button
+          onClick={() => setEditing({ dia: dias.some(esHoy) ? todayISO() : from })}
+          disabled={!tabs || tabs.length === 0}
+          className="ml-auto rounded bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+        >
+          + Ítem
+        </button>
       </div>
 
       {isLoading && <p className="text-sm text-text-muted italic">Cargando...</p>}
@@ -97,7 +99,7 @@ export default function WeekView() {
                 </span>
               </button>
 
-              <ul className="flex flex-col gap-1 flex-1">
+              <ul className="flex flex-col gap-1">
                 {delDia.map((item) => {
                   const tab = tabsById.get(item.tab_id)
                   return (
@@ -128,6 +130,15 @@ export default function WeekView() {
                 })}
               </ul>
 
+              {/* Relleno clickeable: tocar el hueco de la tarjeta lleva al
+                  día, sin robarle el click a los ítems. */}
+              <button
+                onClick={() => navigate(`/dia?d=${dia}`)}
+                className="min-h-6 flex-1"
+                aria-label={`Ver el día ${dia}`}
+                title="Ver el día"
+              />
+
               <button
                 onClick={() => setEditing({ dia })}
                 disabled={!tabs || tabs.length === 0}
@@ -145,8 +156,6 @@ export default function WeekView() {
           tabs={tabs}
           item={'id' in editing ? editing : undefined}
           defaultDate={'id' in editing ? editing.date : editing.dia}
-          defaultTabId={tabFiltro}
-          range={{ from, to }}
           onClose={() => setEditing(null)}
         />
       )}
