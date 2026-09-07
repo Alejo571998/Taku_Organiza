@@ -7,8 +7,8 @@ import { useState } from 'react'
  * recordatorios, lo que sea): por ahora solo saluda con la frase al pasar el
  * mouse, así que va como decorativa y sin rol de botón.
  *
- * z-20 a propósito: tiene que quedar POR DEBAJO del cajón de pestañas (z-40)
- * y de los modales (z-50), o se superpone a los formularios.
+ * z-20 a propósito: queda por debajo de la barra de pestañas (z-30) y de los
+ * modales (z-50), o se superpone a los formularios.
  *
  * El contenedor no recibe eventos y solo la imagen sí, para no tapar clicks
  * del contenido que queda abajo. El :hover igual llega al grupo, porque un
@@ -21,7 +21,7 @@ export default function Mascota() {
   if (falta) return null
 
   return (
-    <div className="group/taku fixed bottom-4 right-4 z-20 flex items-end gap-2 pointer-events-none select-none">
+    <div className="group/taku fixed bottom-16 right-3 z-20 flex items-end gap-2 pointer-events-none select-none">
       <span className="hidden sm:block mb-3 rounded-card border border-border bg-surface px-3 py-1.5 text-xs text-text-secondary shadow-sm opacity-0 transition-opacity group-hover/taku:opacity-100">
         Tu día, en orden.
       </span>

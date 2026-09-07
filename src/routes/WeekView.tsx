@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTabs } from '@/hooks/useTabs'
 import { useItems, useToggleItem } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
+import { useSelectedTab } from '@/hooks/useSelectedTab'
 import {
   addDays,
   weekDays,
@@ -26,7 +27,11 @@ export default function WeekView() {
   const to = dias[6]
 
   const { data: tabs } = useTabs()
-  const { data: items, isLoading, error } = useItems(from, to)
+  const [tabFiltro] = useSelectedTab()
+  const { data: todosLosItems, isLoading, error } = useItems(from, to)
+
+  // La barra inferior filtra todas las vistas por igual.
+  const items = tabFiltro ? todosLosItems?.filter((i) => i.tab_id === tabFiltro) : todosLosItems
   const toggle = useToggleItem(from, to)
   const [editing, setEditing] = useState<Item | { dia: string } | null>(null)
 
@@ -140,6 +145,7 @@ export default function WeekView() {
           tabs={tabs}
           item={'id' in editing ? editing : undefined}
           defaultDate={'id' in editing ? editing.date : editing.dia}
+          defaultTabId={tabFiltro}
           range={{ from, to }}
           onClose={() => setEditing(null)}
         />

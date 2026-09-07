@@ -8,16 +8,25 @@ interface Props {
   item?: Item
   /** Fecha con la que se precarga un ítem nuevo. */
   defaultDate: string
+  /** Pestaña con la que arranca un ítem nuevo (la activa en la barra). */
+  defaultTabId?: string | null
   /** Rango de la vista que abrió el modal, para invalidar su cache. */
   range: { from: string; to: string }
   onClose: () => void
 }
 
-export default function ItemEditorModal({ tabs, item, defaultDate, range, onClose }: Props) {
+export default function ItemEditorModal({
+  tabs,
+  item,
+  defaultDate,
+  defaultTabId,
+  range,
+  onClose
+}: Props) {
   const saveMutation = useSaveItem(range.from, range.to)
   const deleteMutation = useDeleteItem(range.from, range.to)
 
-  const [tabId, setTabId] = useState(item?.tab_id ?? tabs[0]?.id ?? '')
+  const [tabId, setTabId] = useState(item?.tab_id ?? defaultTabId ?? tabs[0]?.id ?? '')
   const [title, setTitle] = useState(item?.title ?? '')
   const [date, setDate] = useState(item?.date ?? defaultDate)
   const [customData, setCustomData] = useState<Record<string, unknown>>(item?.custom_data ?? {})

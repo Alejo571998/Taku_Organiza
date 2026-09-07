@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTabs } from '@/hooks/useTabs'
 import { useItems } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
+import { useSelectedTab } from '@/hooks/useSelectedTab'
 import {
   monthKey,
   monthStart,
@@ -33,7 +34,11 @@ export default function MonthView() {
   const to = celdas[celdas.length - 1]
 
   const { data: tabs } = useTabs()
-  const { data: items, isLoading, error } = useItems(from, to)
+  const [tabFiltro] = useSelectedTab()
+  const { data: todosLosItems, isLoading, error } = useItems(from, to)
+
+  // La barra inferior filtra todas las vistas por igual.
+  const items = tabFiltro ? todosLosItems?.filter((i) => i.tab_id === tabFiltro) : todosLosItems
   const [editing, setEditing] = useState<Item | null>(null)
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
@@ -148,6 +153,7 @@ export default function MonthView() {
           tabs={tabs}
           item={editing}
           defaultDate={editing.date}
+          defaultTabId={tabFiltro}
           range={{ from, to }}
           onClose={() => setEditing(null)}
         />

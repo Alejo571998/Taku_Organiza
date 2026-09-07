@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTabs } from '@/hooks/useTabs'
 import { useItems, useToggleItem, useReorderItems } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
+import { useSelectedTab } from '@/hooks/useSelectedTab'
 import { addDays, formatLargo, esHoy, todayISO } from '@/lib/dates'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
 import Chevron from '@/components/ui/Chevron'
@@ -11,7 +12,11 @@ import type { Item } from '@/types/database.types'
 export default function DayView() {
   const [date, setDate] = useSelectedDate()
   const { data: tabs } = useTabs()
-  const { data: items, isLoading, error } = useItems(date, date)
+  const [tabFiltro] = useSelectedTab()
+  const { data: todosLosItems, isLoading, error } = useItems(date, date)
+
+  // La barra inferior filtra todas las vistas por igual.
+  const items = tabFiltro ? todosLosItems?.filter((i) => i.tab_id === tabFiltro) : todosLosItems
   const toggle = useToggleItem(date, date)
   const reorder = useReorderItems(date, date)
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
@@ -78,7 +83,7 @@ export default function DayView() {
 
       {tabs && tabs.length === 0 && (
         <p className="text-sm text-text-secondary">
-          Creá una pestaña en la barra lateral antes de cargar ítems: cada ítem vive dentro de una.
+          Creá una pestaña desde la barra de abajo antes de cargar ítems: cada ítem vive dentro de una.
         </p>
       )}
 
@@ -146,6 +151,7 @@ export default function DayView() {
           tabs={tabs}
           item={editing === 'new' ? undefined : editing}
           defaultDate={date}
+          defaultTabId={tabFiltro}
           range={{ from: date, to: date }}
           onClose={() => setEditing(null)}
         />

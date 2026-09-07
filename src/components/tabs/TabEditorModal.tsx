@@ -15,12 +15,12 @@ const COLORS: { key: CategoryColor; label: string }[] = [
 ]
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
-  { value: 'text', label: 'Texto' },
+  { value: 'text', label: 'Notas (texto libre)' },
   { value: 'number', label: 'Número' },
   { value: 'currency', label: 'Moneda (ARS)' },
   { value: 'date', label: 'Fecha' },
-  { value: 'boolean', label: 'Sí/No' },
-  { value: 'select', label: 'Selección' }
+  { value: 'boolean', label: 'Casilla sí/no' },
+  { value: 'select', label: 'Lista de opciones' }
 ]
 
 interface FieldFormValue {
@@ -160,16 +160,22 @@ export default function TabEditorModal({ tab, onClose }: Props) {
         </div>
 
         <div className="border-t border-border pt-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between gap-2 mb-1">
             <p className="text-sm text-text-secondary">Campos personalizados</p>
             <button
               type="button"
               onClick={addField}
-              className="text-sm border border-border rounded px-2 py-1"
+              className="shrink-0 text-sm border border-border rounded px-2 py-1 whitespace-nowrap"
             >
               + Agregar campo
             </button>
           </div>
+          {/* Sin esta aclaración la gente crea un campo "Título" a mano y
+              después el formulario del ítem lo pide dos veces. */}
+          <p className="text-xs text-text-muted mb-3">
+            Todo ítem ya trae <strong>Título</strong> y <strong>Fecha</strong>. Agregá acá solo lo
+            propio de esta pestaña.
+          </p>
           <SortableList
             ids={fields.map((f) => f.clientKey)}
             onReorder={(ids) =>
@@ -182,35 +188,42 @@ export default function TabEditorModal({ tab, onClose }: Props) {
             className="flex flex-col gap-3"
           >
             {fields.map((f) => (
-              <SortableRow key={f.clientKey} id={f.clientKey} className="flex items-start gap-1">
+              <SortableRow
+                key={f.clientKey}
+                id={f.clientKey}
+                className="flex items-start gap-1 rounded border border-border bg-bg p-2"
+              >
+              {/* Nombre y tipo van uno debajo del otro. Puestos en la misma
+                  fila no entraban ni en desktop y el modal scrolleaba en
+                  horizontal, que fue lo que reportó el primer usuario. */}
               <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-start">
                   <input
                     value={f.name}
                     onChange={(e) => updateField(f.clientKey, { name: e.target.value })}
                     placeholder="Nombre del campo"
-                    className="flex-1 rounded border border-border px-2 py-1.5 text-sm bg-surface"
+                    className="min-w-0 flex-1 rounded border border-border px-2 py-1.5 text-sm bg-surface"
                   />
-                  <select
-                    value={f.type}
-                    onChange={(e) => updateField(f.clientKey, { type: e.target.value as FieldType })}
-                    className="rounded border border-border px-2 py-1.5 text-sm bg-surface"
-                  >
-                    {FIELD_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
                   <button
                     type="button"
                     onClick={() => removeField(f.clientKey)}
-                    className="text-text-secondary text-sm px-1"
+                    className="shrink-0 text-text-secondary text-sm px-1 py-1.5"
                     aria-label="Eliminar campo"
                   >
                     ✕
                   </button>
                 </div>
+                <select
+                  value={f.type}
+                  onChange={(e) => updateField(f.clientKey, { type: e.target.value as FieldType })}
+                  className="w-full rounded border border-border px-2 py-1.5 text-sm bg-surface"
+                >
+                  {FIELD_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
                 {f.type === 'select' && (
                   <input
                     value={f.options.join(', ')}
