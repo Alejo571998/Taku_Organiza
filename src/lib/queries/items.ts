@@ -2,7 +2,9 @@ import { supabase } from '@/lib/supabase'
 import type { Item, Recurrence } from '@/types/database.types'
 
 export const ITEM_SELECT =
-  'id, user_id, tab_id, title, date, completed, sort_order, custom_data, series_id, recurrence'
+  // Una sola cadena literal a proposito: partida con + deja de ser literal
+  // y supabase-js pierde la inferencia de tipos del select.
+  'id, user_id, tab_id, title, date, completed, sort_order, custom_data, series_id, recurrence, recurrence_until'
 
 /** Trae los ítems de un rango de fechas inclusivo. Sirve para día, semana y mes. */
 export async function fetchItems(from: string, to: string): Promise<Item[]> {
@@ -110,25 +112,15 @@ export async function fetchItemsByTab(tabId: string): Promise<Item[]> {
   return (data ?? []) as Item[]
 }
 
-/**
- * Cuántas ocurrencias se crean por adelantado. Se materializan filas reales,
- * así que el horizonte es un compromiso entre alcance y cantidad de datos.
- */
-export const REPETICIONES: Record<Recurrence, number> = {
-  daily: 60,
-  weekly: 26,
-  monthly: 12
-}
-
 export const ETIQUETA_REPETICION: Record<Recurrence, string> = {
   daily: 'Todos los días',
   weekly: 'Todas las semanas',
   monthly: 'Todos los meses'
 }
 
-/** Crea todas las ocurrencias de una tarea repetida. Devuelve el series_id. */
+/** Crea las ocurrencias desde la fecha del ítem hasta `until` inclusive. */
 export async function createRecurringItems(
-  input: SaveItemInput & { recurrence: Recurrence }
+  input: SaveItemInput & { recurrence: Recurrence; until: string }
 ): Promise<string> {
   const { data, error } = await supabase.rpc('create_recurring_items', {
     p_tab_id: input.tabId,
@@ -136,10 +128,29 @@ export async function createRecurringItems(
     p_date: input.date,
     p_custom_data: input.customData,
     p_recurrence: input.recurrence,
-    p_count: REPETICIONES[input.recurrence]
+    p_until: input.until
   })
   if (error) throw error
   return data as string
+}
+
+/**
+ * Cambia la repetición de esta fecha en adelante, como Google Calendar.
+ * Las ocurrencias anteriores no se tocan: son pasado y pueden estar tildadas.
+ * `recurrence` en null deja la tarea suelta.
+ */
+export async function rescheduleItemSeries(input: {
+  itemId: string
+  recurrence: Recurrence | null
+  until: string | null
+}): Promise<string | null> {
+  const { data, error } = await supabase.rpc('reschedule_item_series', {
+    p_item_id: input.itemId,
+    p_recurrence: input.recurrence,
+    p_until: input.until
+  })
+  if (error) throw error
+  return (data as string | null) ?? null
 }
 
 /** Borra todas las ocurrencias de una serie. Devuelve cuántas borró. */

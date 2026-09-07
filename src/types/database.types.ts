@@ -42,4 +42,6 @@ export interface Item {
   /** Une a todas las ocurrencias de una misma tarea repetida. */
   series_id: string | null
   recurrence: Recurrence | null
+  /** Hasta cuándo llega la serie. */
+  recurrence_until: string | null
 }

@@ -8,6 +8,7 @@ import {
   deleteItem,
   reorderItems,
   createRecurringItems,
+  rescheduleItemSeries,
   deleteItemSeries
 } from '@/lib/queries/items'
 import type { Item } from '@/types/database.types'
@@ -118,6 +119,14 @@ export function useDeleteItemSeries() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: deleteItemSeries,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['items'] })
+  })
+}
+
+export function useRescheduleItemSeries() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: rescheduleItemSeries,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['items'] })
   })
 }

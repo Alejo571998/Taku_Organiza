@@ -133,3 +133,16 @@ export function formatMesLargo(key: string): string {
   const [y, m] = key.split('-').map(Number)
   return FORMATO_MES_LARGO.format(new Date(y, m - 1, 1))
 }
+
+/**
+ * Suma meses a una fecha ISO conservando el día cuando el mes lo permite.
+ * El 31/01 + 1 mes da 28/02 (no 03/03): Date corre el desborde al mes
+ * siguiente, así que hay que detectarlo y volver al último día.
+ */
+export function addMonthsISO(iso: string, meses: number): string {
+  const d = fromISODate(iso)
+  const diaOriginal = d.getDate()
+  d.setMonth(d.getMonth() + meses)
+  if (d.getDate() !== diaOriginal) d.setDate(0)
+  return toISODate(d)
+}

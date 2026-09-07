@@ -3,9 +3,11 @@ import {
   useSaveItem,
   useDeleteItem,
   useCreateRecurringItems,
+  useRescheduleItemSeries,
   useDeleteItemSeries
 } from '@/hooks/useItems'
-import { ETIQUETA_REPETICION, REPETICIONES } from '@/lib/queries/items'
+import { ETIQUETA_REPETICION } from '@/lib/queries/items'
+import { addMonthsISO } from '@/lib/dates'
 import type { TabWithFields } from '@/lib/queries/tabs'
 import type { Item, Recurrence } from '@/types/database.types'
 
@@ -29,16 +31,29 @@ export default function ItemEditorModal({
   const saveMutation = useSaveItem()
   const deleteMutation = useDeleteItem()
   const recurringMutation = useCreateRecurringItems()
+  const rescheduleMutation = useRescheduleItemSeries()
   const deleteSeriesMutation = useDeleteItemSeries()
 
   const [tabId, setTabId] = useState(item?.tab_id ?? defaultTabId ?? tabs[0]?.id ?? '')
   const [title, setTitle] = useState(item?.title ?? '')
   const [date, setDate] = useState(item?.date ?? defaultDate)
   const [customData, setCustomData] = useState<Record<string, unknown>>(item?.custom_data ?? {})
-  // La repetición solo se ofrece al crear: cambiarla sobre una serie que ya
-  // existe implica decidir qué pasa con las ocurrencias pasadas, las futuras
-  // y las ya tildadas, y eso es una función aparte.
-  const [repeticion, setRepeticion] = useState<Recurrence | ''>('')
+  const [repeticion, setRepeticion] = useState<Recurrence | ''>(item?.recurrence ?? '')
+  // Si la tarea ya viene con fecha de fin se respeta tal cual; si no, se
+  // ofrecen duraciones, que es como lo piensa quien la usa ("un mes").
+  const [hastaModo, setHastaModo] = useState<'1' | '3' | '6' | '12' | 'fecha'>(
+    item?.recurrence_until ? 'fecha' : '1'
+  )
+  const [hastaFecha, setHastaFecha] = useState(item?.recurrence_until ?? '')
+
+  const hasta = hastaModo === 'fecha' ? hastaFecha : addMonthsISO(date, Number(hastaModo))
+
+  // Con qué repetición y hasta cuándo entró al modal, para no regenerar la
+  // serie entera si el usuario solo cambió el título.
+  const repeticionOriginal = item?.recurrence ?? ''
+  const hastaOriginal = item?.recurrence_until ?? ''
+  const cambioLaRepeticion =
+    repeticion !== repeticionOriginal || (repeticion !== '' && hasta !== hastaOriginal)
   const [error, setError] = useState<string | null>(null)
 
   const activeTab = tabs.find((t) => t.id === tabId)
@@ -73,8 +88,21 @@ export default function ItemEditorModal({
         )
       }
 
-      if (!item && repeticion) await recurringMutation.mutateAsync({ ...datos, recurrence: repeticion })
-      else await saveMutation.mutateAsync(datos)
+      if (!item && repeticion) {
+        if (!hasta) throw new Error('Elegí hasta cuándo se repite.')
+        await recurringMutation.mutateAsync({ ...datos, recurrence: repeticion, until: hasta })
+      } else {
+        // Primero los datos, después la repetición: reagendar arranca desde la
+        // fecha del ítem, y esa fecha puede haber cambiado recién.
+        await saveMutation.mutateAsync(datos)
+        if (item && cambioLaRepeticion) {
+          await rescheduleMutation.mutateAsync({
+            itemId: item.id,
+            recurrence: repeticion || null,
+            until: repeticion ? hasta : null
+          })
+        }
+      }
 
       onClose()
     } catch (e) {
@@ -143,34 +171,64 @@ export default function ItemEditorModal({
           className={`${inputClass} mb-4`}
         />
 
-        {!item && (
+        {/* La repetición se ofrece igual al crear que al editar. Al editar,
+            los cambios valen de esta fecha en adelante: las ocurrencias
+            anteriores son pasado y varias pueden estar ya tildadas. */}
+        <label className="text-sm text-text-secondary block mb-1">Repetir</label>
+        <select
+          value={repeticion}
+          onChange={(e) => setRepeticion(e.target.value as Recurrence | '')}
+          className={`${inputClass} mb-2`}
+        >
+          <option value="">No se repite</option>
+          {(Object.keys(ETIQUETA_REPETICION) as Recurrence[]).map((r) => (
+            <option key={r} value={r}>
+              {ETIQUETA_REPETICION[r]}
+            </option>
+          ))}
+        </select>
+
+        {repeticion && (
           <>
-            <label className="text-sm text-text-secondary block mb-1">Repetir</label>
+            <label className="text-sm text-text-secondary block mb-1">Hasta</label>
             <select
-              value={repeticion}
-              onChange={(e) => setRepeticion(e.target.value as Recurrence | '')}
-              className={`${inputClass} mb-1`}
+              value={hastaModo}
+              onChange={(e) => setHastaModo(e.target.value as typeof hastaModo)}
+              className={`${inputClass} mb-2`}
             >
-              <option value="">No se repite</option>
-              {(Object.keys(ETIQUETA_REPETICION) as Recurrence[]).map((r) => (
-                <option key={r} value={r}>
-                  {ETIQUETA_REPETICION[r]}
-                </option>
-              ))}
+              <option value="1">Dentro de 1 mes</option>
+              <option value="3">Dentro de 3 meses</option>
+              <option value="6">Dentro de 6 meses</option>
+              <option value="12">Dentro de 1 año</option>
+              <option value="fecha">Hasta una fecha…</option>
             </select>
+
+            {hastaModo === 'fecha' && (
+              <input
+                type="date"
+                value={hastaFecha}
+                min={date}
+                onChange={(e) => setHastaFecha(e.target.value)}
+                className={`${inputClass} mb-2`}
+              />
+            )}
+
             <p className="text-xs text-text-muted mb-4">
-              {repeticion
-                ? `Se crean ${REPETICIONES[repeticion]} tareas por adelantado. Cada una se tilda por separado.`
-                : 'Se crea una sola tarea, en la fecha elegida.'}
+              {hasta
+                ? `Se repite hasta el ${hasta.split('-').reverse().join('/')}. Cada fecha se tilda por separado.`
+                : 'Elegí hasta cuándo se repite.'}
             </p>
           </>
         )}
 
-        {item?.series_id && item.recurrence && (
+        {!repeticion && <div className="mb-4" />}
+
+        {item?.series_id && (
           <div className="mb-4 rounded border border-border bg-bg px-3 py-2">
             <p className="text-xs text-text-secondary">
-              Parte de una serie que se repite: {ETIQUETA_REPETICION[item.recurrence].toLowerCase()}.
-              Los cambios acá afectan solo a esta fecha.
+              {cambioLaRepeticion
+                ? 'Al guardar se rehacen las repeticiones desde esta fecha en adelante. Las anteriores quedan como están.'
+                : 'Esta tarea es parte de una serie. Lo que edites acá afecta solo a esta fecha.'}
             </p>
             <button
               type="button"
