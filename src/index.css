@@ -1,0 +1,43 @@
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/700.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #FBF9F5;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F3EFE7;
+  --color-border: #E7E1D6;
+  --color-text-primary: #3A342E;
+  --color-text-secondary: #857C70;
+  --color-text-muted: #B0A79A;
+
+  /* Verde de la marca (Taku). El verde del personaje (#0DC328) es demasiado
+     claro para texto blanco encima: da 2.4:1. Estos tonos dan 5:1 y 5.8:1. */
+  --color-accent: #16803C;
+  --color-accent-soft: #C9E9D2;
+  --color-accent-text: #14713A;
+
+  --color-danger: #B85C57;
+
+  --cat-peach: #FBDCC9;
+  --cat-peach-text: #A85D34;
+  --cat-sky: #CFE8F7;
+  --cat-sky-text: #2E6E93;
+  --cat-mint: #D3EDD6;
+  --cat-mint-text: #3F7D49;
+  --cat-blush: #F7D9E4;
+  --cat-blush-text: #A85374;
+  --cat-lavender: #E1D6F5;
+  --cat-lavender-text: #6952A3;
+  --cat-butter: #FBEACB;
+  --cat-butter-text: #96741F;
+  --cat-seafoam: #CDEDE4;
+  --cat-seafoam-text: #327C68;
+}
+
+body {
+  @apply bg-bg text-text-primary font-sans;
+}
