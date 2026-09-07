@@ -15,8 +15,18 @@ import {
 } from '@/lib/dates'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
 import Chevron from '@/components/ui/Chevron'
+import RepeatIcon from '@/components/ui/RepeatIcon'
 import type { Item } from '@/types/database.types'
 
+/**
+ * Vista de lectura: tocar cualquier parte de un día lleva a la vista diaria.
+ *
+ * Los ítems NO abren el editor acá. Con el dedo es facilísimo pegarle a un
+ * ítem queriendo tocar el día, y que eso abra un formulario de edición es
+ * mucho peor que abrir una lista. Editar pasa solo en Día y en la lista de
+ * la pestaña. La única excepción es el tilde, que es chico pero deliberado
+ * y reversible de un toque.
+ */
 export default function WeekView() {
   const [date, setDate] = useSelectedDate()
   const navigate = useNavigate()
@@ -28,17 +38,17 @@ export default function WeekView() {
   const { data: tabs } = useTabs()
   const { data: items, isLoading, error } = useItems(from, to)
   const toggle = useToggleItem(itemsKey(from, to))
-  const [editing, setEditing] = useState<Item | { dia: string } | null>(null)
+  const [creando, setCreando] = useState<string | null>(null)
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
 
-  // Un solo pasada para agrupar por día, en vez de filtrar el array siete veces.
+  // Una sola pasada para agrupar por día, en vez de filtrar el array siete veces.
   const porDia = new Map<string, Item[]>(dias.map((d) => [d, []]))
   for (const item of items ?? []) porDia.get(item.date)?.push(item)
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-5">
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
         <button
           onClick={() => setDate(addDays(startOfWeek(date), -7))}
           className="border border-border rounded p-1.5 hover:bg-surface-alt transition-colors"
@@ -65,7 +75,7 @@ export default function WeekView() {
           </button>
         )}
         <button
-          onClick={() => setEditing({ dia: dias.some(esHoy) ? todayISO() : from })}
+          onClick={() => setCreando(dias.some(esHoy) ? todayISO() : from)}
           disabled={!tabs || tabs.length === 0}
           className="ml-auto rounded bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
         >
@@ -84,13 +94,18 @@ export default function WeekView() {
           return (
             <div
               key={dia}
-              className={`rounded-card border p-2 min-h-32 flex flex-col ${
-                esHoy(dia) ? 'border-accent bg-accent-soft/25' : 'border-border bg-surface'
+              onClick={() => navigate(`/dia?d=${dia}`)}
+              className={`flex min-h-32 cursor-pointer flex-col rounded-card border p-2 transition-colors ${
+                esHoy(dia)
+                  ? 'border-accent bg-accent-soft/25 hover:bg-accent-soft/40'
+                  : 'border-border bg-surface hover:bg-surface-alt'
               }`}
             >
+              {/* Botón real para que el día también se pueda abrir con teclado:
+                  un div con onClick no recibe foco. */}
               <button
                 onClick={() => navigate(`/dia?d=${dia}`)}
-                className="flex items-baseline gap-1.5 mb-2 text-left"
+                className="mb-2 flex items-baseline gap-1.5 text-left"
                 title="Ver el día"
               >
                 <span className="text-xs text-text-secondary">{DIAS_SEMANA[i]}</span>
@@ -107,56 +122,46 @@ export default function WeekView() {
                       <input
                         type="checkbox"
                         checked={item.completed}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) =>
                           toggle.mutate({ id: item.id, completed: e.target.checked })
                         }
                         className="mt-[3px] shrink-0"
                         aria-label={`Marcar "${item.title}"`}
                       />
-                      <button
-                        onClick={() => setEditing(item)}
-                        className="text-left text-xs leading-snug flex-1 min-w-0 rounded px-1 py-0.5"
+                      <span
+                        className="min-w-0 flex-1 rounded px-1 py-0.5 text-xs leading-snug"
                         style={{
                           background: `var(--cat-${tab?.color ?? 'peach'})`,
                           color: `var(--cat-${tab?.color ?? 'peach'}-text)`
                         }}
                       >
-                        <span className={item.completed ? 'line-through opacity-60' : ''}>
-                          {item.title}
+                        <span
+                          className={`flex items-center gap-1 ${
+                            item.completed ? 'line-through opacity-60' : ''
+                          }`}
+                        >
+                          {item.recurrence && <RepeatIcon className="shrink-0 opacity-70" />}
+                          <span className="truncate">{item.title}</span>
                         </span>
-                      </button>
+                      </span>
                     </li>
                   )
                 })}
               </ul>
 
-              {/* Relleno clickeable: tocar el hueco de la tarjeta lleva al
-                  día, sin robarle el click a los ítems. */}
-              <button
-                onClick={() => navigate(`/dia?d=${dia}`)}
-                className="min-h-6 flex-1"
-                aria-label={`Ver el día ${dia}`}
-                title="Ver el día"
-              />
-
-              <button
-                onClick={() => setEditing({ dia })}
-                disabled={!tabs || tabs.length === 0}
-                className="mt-2 text-xs text-text-muted hover:text-text-primary text-left disabled:opacity-40"
-              >
-                + Agregar
-              </button>
+              {/* Relleno: el hueco de la tarjeta sigue siendo zona de toque. */}
+              <div className="min-h-6 flex-1" />
             </div>
           )
         })}
       </div>
 
-      {editing && tabs && (
+      {creando && tabs && (
         <ItemEditorModal
           tabs={tabs}
-          item={'id' in editing ? editing : undefined}
-          defaultDate={'id' in editing ? editing.date : editing.dia}
-          onClose={() => setEditing(null)}
+          defaultDate={creando}
+          onClose={() => setCreando(null)}
         />
       )}
     </div>

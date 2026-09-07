@@ -21,6 +21,15 @@ import type { Item } from '@/types/database.types'
 /** Cuántos ítems se listan en una celda antes de resumir el resto. */
 const MAX_VISIBLES = 3
 
+/**
+ * Vista de lectura: tocar cualquier parte de un día lleva a la vista diaria.
+ *
+ * Los ítems son etiquetas, no botones. En una celda de mes miden 11px y con
+ * el dedo es casi imposible tocar el día sin rozar uno; que eso abriera el
+ * editor convertía un gesto de navegación en uno de edición. Se edita solo
+ * en Día y en la lista de la pestaña.
+ */
+
 export default function MonthView() {
   const [date, setDate] = useSelectedDate()
   const navigate = useNavigate()
@@ -34,7 +43,7 @@ export default function MonthView() {
 
   const { data: tabs } = useTabs()
   const { data: items, isLoading, error } = useItems(from, to)
-  const [editing, setEditing] = useState<Item | { dia: string } | null>(null)
+  const [creando, setCreando] = useState<string | null>(null)
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
 
@@ -72,7 +81,7 @@ export default function MonthView() {
           </button>
         )}
         <button
-          onClick={() => setEditing({ dia: mes === monthKey(todayISO()) ? todayISO() : monthStart(mes) })}
+          onClick={() => setCreando(mes === monthKey(todayISO()) ? todayISO() : monthStart(mes))}
           disabled={!tabs || tabs.length === 0}
           className="ml-auto rounded bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
         >
@@ -101,7 +110,8 @@ export default function MonthView() {
           return (
             <div
               key={dia}
-              className={`bg-surface min-h-24 p-1.5 flex flex-col gap-1 ${
+              onClick={() => navigate(`/dia?d=${dia}`)}
+              className={`flex min-h-24 cursor-pointer flex-col gap-1 bg-surface p-1.5 transition-colors hover:bg-surface-alt ${
                 delMes ? '' : 'opacity-40'
               }`}
             >
@@ -120,10 +130,9 @@ export default function MonthView() {
               {visibles.map((item) => {
                 const tab = tabsById.get(item.tab_id)
                 return (
-                  <button
+                  <span
                     key={item.id}
-                    onClick={() => setEditing(item)}
-                    className="text-left text-[11px] leading-tight rounded px-1 py-0.5 truncate"
+                    className="truncate rounded px-1 py-0.5 text-[11px] leading-tight"
                     style={{
                       background: `var(--cat-${tab?.color ?? 'peach'})`,
                       color: `var(--cat-${tab?.color ?? 'peach'}-text)`
@@ -133,39 +142,23 @@ export default function MonthView() {
                     <span className={item.completed ? 'line-through opacity-60' : ''}>
                       {item.title}
                     </span>
-                  </button>
+                  </span>
                 )
               })}
 
               {resto > 0 && (
-                <button
-                  onClick={() => navigate(`/dia?d=${dia}`)}
-                  className="text-[11px] text-text-muted hover:text-text-primary text-left px-1"
-                >
-                  +{resto} más
-                </button>
+                <span className="px-1 text-[11px] text-text-muted">+{resto} más</span>
               )}
 
-              {/* Relleno clickeable: hace que tocar el hueco de la celda lleve
-                  al día, sin robarle el click a los ítems de arriba. */}
-              <button
-                onClick={() => navigate(`/dia?d=${dia}`)}
-                className="min-h-4 flex-1"
-                aria-label={`Ver el día ${dia}`}
-                title="Ver el día"
-              />
+              {/* Relleno: el hueco de la celda sigue siendo zona de toque. */}
+              <div className="min-h-4 flex-1" />
             </div>
           )
         })}
       </div>
 
-      {editing && tabs && (
-        <ItemEditorModal
-          tabs={tabs}
-          item={'id' in editing ? editing : undefined}
-          defaultDate={'id' in editing ? editing.date : editing.dia}
-          onClose={() => setEditing(null)}
-        />
+      {creando && tabs && (
+        <ItemEditorModal tabs={tabs} defaultDate={creando} onClose={() => setCreando(null)} />
       )}
     </div>
   )
