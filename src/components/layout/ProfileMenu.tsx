@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context'
 /**
  * Menú de perfil. Reemplaza a la barra lateral: ahora que las pestañas viven
  * al pie, lo único que quedaba ahí era la cuenta, y una columna entera para
- * eso se comía el ancho de la app (en el celular, el 60% de la pantalla).
+ * eso se comía el ancho (en el celular, el 60% de la pantalla).
  */
 export default function ProfileMenu() {
   const { user, signOut } = useAuth()
@@ -33,7 +33,12 @@ export default function ProfileMenu() {
     <div ref={cont} className="relative shrink-0">
       <button
         onClick={() => setAbierto((v) => !v)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white"
+        className="grid h-10 w-10 place-items-center rounded-full text-sm font-bold text-[rgb(6,26,18)] transition-transform hover:scale-105"
+        style={{
+          background:
+            'linear-gradient(145deg, rgb(var(--color-accent)), rgb(var(--pastel-aqua)))',
+          boxShadow: '0 4px 16px -4px rgb(var(--color-accent) / 0.5)'
+        }}
         aria-haspopup="menu"
         aria-expanded={abierto}
         aria-label="Perfil y configuración"
@@ -44,18 +49,18 @@ export default function ProfileMenu() {
       {abierto && (
         <div
           role="menu"
-          className="absolute right-0 top-11 z-40 w-60 rounded-card border border-border bg-surface p-3 shadow-lg"
+          className="glass-strong absolute right-0 top-12 z-40 w-64 rounded-card p-3"
         >
           <p className="text-xs text-text-muted">Sesión iniciada como</p>
           <p className="mb-3 truncate text-sm">{user?.email}</p>
 
-          <div className="border-t border-border pt-2">
+          <div className="border-t border-white/[0.07] pt-2">
             <button
               onClick={() => {
                 setAbierto(false)
                 signOut()
               }}
-              className="w-full rounded px-2 py-1.5 text-left text-sm text-text-secondary hover:bg-surface-alt hover:text-text-primary"
+              className="w-full rounded-lg px-2 py-2 text-left text-sm text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary"
               role="menuitem"
             >
               Cerrar sesión

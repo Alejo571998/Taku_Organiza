@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase'
-import type { Item, Recurrence } from '@/types/database.types'
+import type { CategoryColor, Item, Recurrence } from '@/types/database.types'
 
 export const ITEM_SELECT =
   // Una sola cadena literal a proposito: partida con + deja de ser literal
   // y supabase-js pierde la inferencia de tipos del select.
-  'id, user_id, tab_id, title, date, completed, sort_order, custom_data, series_id, recurrence, recurrence_until'
+  'id, user_id, tab_id, title, date, completed, sort_order, custom_data, series_id, recurrence, recurrence_until, note, color'
 
 /** Trae los ítems de un rango de fechas inclusivo. Sirve para día, semana y mes. */
 export async function fetchItems(from: string, to: string): Promise<Item[]> {
@@ -29,6 +29,10 @@ export interface SaveItemInput {
   title: string
   date: string
   customData: Record<string, unknown>
+  /** Vacío se guarda como null, para no distinguir "" de "sin nota". */
+  note?: string | null
+  /** null = hereda el color de la pestaña. */
+  color?: CategoryColor | null
 }
 
 export async function saveItem(input: SaveItemInput): Promise<string> {
@@ -39,7 +43,9 @@ export async function saveItem(input: SaveItemInput): Promise<string> {
         tab_id: input.tabId,
         title: input.title,
         date: input.date,
-        custom_data: input.customData
+        custom_data: input.customData,
+        note: input.note?.trim() || null,
+        color: input.color ?? null
       })
       .eq('id', input.id)
       .select('id')
@@ -72,6 +78,8 @@ export async function saveItem(input: SaveItemInput): Promise<string> {
       title: input.title,
       date: input.date,
       custom_data: input.customData,
+      note: input.note?.trim() || null,
+      color: input.color ?? null,
       sort_order: (last?.sort_order ?? -1) + 1
     })
     .select('id')
@@ -128,7 +136,9 @@ export async function createRecurringItems(
     p_date: input.date,
     p_custom_data: input.customData,
     p_recurrence: input.recurrence,
-    p_until: input.until
+    p_until: input.until,
+    p_note: input.note?.trim() || null,
+    p_color: input.color ?? null
   })
   if (error) throw error
   return data as string

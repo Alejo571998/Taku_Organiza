@@ -1,43 +1,212 @@
 @import '@fontsource/plus-jakarta-sans/400.css';
 @import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
 @import '@fontsource/plus-jakarta-sans/700.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Sistema de diseño TAKU — oscuro, vidrio y pasteles.
+ *
+ * Todo se define como tripletas RGB sin envolver en rgb(): eso es lo que
+ * permite que Tailwind aplique opacidad (bg-surface/60, text-mint/80) y
+ * que el mismo token sirva para relleno, borde y texto con distintas
+ * intensidades. Un token guardado como "#1A2233" no admite eso.
+ */
 :root {
-  --color-bg: #FBF9F5;
-  --color-surface: #FFFFFF;
-  --color-surface-alt: #F3EFE7;
-  --color-border: #E7E1D6;
-  --color-text-primary: #3A342E;
-  --color-text-secondary: #857C70;
-  --color-text-muted: #B0A79A;
+  color-scheme: dark;
 
-  /* Verde de la marca (Taku). El verde del personaje (#0DC328) es demasiado
-     claro para texto blanco encima: da 2.4:1. Estos tonos dan 5:1 y 5.8:1. */
-  --color-accent: #16803C;
-  --color-accent-soft: #C9E9D2;
-  --color-accent-text: #14713A;
+  /* --- Fondo: navy profundo, con dos luces ambientales --- */
+  --color-bg: 8 12 26;
+  --color-bg-deep: 5 8 18;
+  --glow-warm: 255 183 120;
+  --glow-cool: 129 158 255;
 
-  --color-danger: #B85C57;
+  /* --- Superficies de vidrio ---
+     Son blanco a baja opacidad y no un gris fijo: así toman el color de
+     la luz ambiental que tienen detrás, que es lo que hace que el vidrio
+     parezca vidrio y no una caja gris pegada encima. */
+  --color-surface: 255 255 255;
+  --surface-1: 0.045; /* tarjetas sobre el fondo */
+  --surface-2: 0.075; /* elevada: modales, menús */
+  --surface-3: 0.11;  /* controles activos */
+  --border-soft: 0.08;
+  --border-strong: 0.16;
 
-  --cat-peach: #FBDCC9;
-  --cat-peach-text: #A85D34;
-  --cat-sky: #CFE8F7;
-  --cat-sky-text: #2E6E93;
-  --cat-mint: #D3EDD6;
-  --cat-mint-text: #3F7D49;
-  --cat-blush: #F7D9E4;
-  --cat-blush-text: #A85374;
-  --cat-lavender: #E1D6F5;
-  --cat-lavender-text: #6952A3;
-  --cat-butter: #FBEACB;
-  --cat-butter-text: #96741F;
-  --cat-seafoam: #CDEDE4;
-  --cat-seafoam-text: #327C68;
+  /* --- Texto --- */
+  --color-text-primary: 236 241 250;
+  --color-text-secondary: 165 178 201;
+  --color-text-muted: 116 130 156;
+
+  /* --- Acento (verde TAKU, llevado a un tono luminoso para fondo oscuro) --- */
+  --color-accent: 94 226 158;
+  --color-accent-text: 140 240 189;
+
+  --color-danger: 255 138 138;
+
+  /* --- Paleta pastel: 12 tonos, claros para leerse sobre el navy --- */
+  --pastel-mint: 152 235 196;
+  --pastel-sage: 178 214 178;
+  --pastel-aqua: 142 226 224;
+  --pastel-sky: 148 206 250;
+  --pastel-blue: 150 178 255;
+  --pastel-lavender: 193 179 255;
+  --pastel-lilac: 216 176 245;
+  --pastel-pink: 255 173 208;
+  --pastel-coral: 255 166 158;
+  --pastel-peach: 255 194 155;
+  --pastel-butter: 250 224 150;
+  --pastel-cream: 240 230 205;
 }
 
 body {
-  @apply bg-bg text-text-primary font-sans;
+  @apply bg-bg text-text-primary font-sans antialiased;
+  min-height: 100vh;
+}
+
+/**
+ * Iluminación ambiental. Dos manchas de luz fijas detrás de todo el
+ * contenido: es lo que le da profundidad al fondo y evita el negro plano.
+ * Van en un pseudo-elemento fixed para que no se muevan con el scroll ni
+ * agreguen un nodo al árbol.
+ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 45% at 12% 8%, rgb(var(--glow-cool) / 0.16), transparent 70%),
+    radial-gradient(55% 40% at 88% 82%, rgb(var(--glow-warm) / 0.12), transparent 70%),
+    linear-gradient(170deg, rgb(var(--color-bg)) 0%, rgb(var(--color-bg-deep)) 100%);
+}
+
+@layer components {
+  /**
+   * Vidrio. El borde claro arriba y oscuro abajo imita cómo la luz pega
+   * en el canto superior de una lámina: sin eso el "vidrio" se ve como un
+   * rectángulo translúcido cualquiera.
+   */
+  .glass {
+    background: rgb(var(--color-surface) / var(--surface-1));
+    border: 1px solid rgb(var(--color-surface) / var(--border-soft));
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    box-shadow:
+      0 1px 0 0 rgb(var(--color-surface) / 0.06) inset,
+      0 8px 24px -12px rgb(0 0 0 / 0.6);
+  }
+
+  .glass-strong {
+    background: rgb(var(--color-surface) / var(--surface-2));
+    border: 1px solid rgb(var(--color-surface) / var(--border-strong));
+    backdrop-filter: blur(28px) saturate(150%);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    box-shadow:
+      0 1px 0 0 rgb(var(--color-surface) / 0.1) inset,
+      0 24px 60px -20px rgb(0 0 0 / 0.75);
+  }
+
+  /* Campos: se hunden en vez de elevarse, para distinguirse de las tarjetas. */
+  .field {
+    @apply w-full rounded-xl px-3 py-2.5 text-sm transition-colors;
+    background: rgb(0 0 0 / 0.25);
+    border: 1px solid rgb(var(--color-surface) / var(--border-soft));
+    color: rgb(var(--color-text-primary));
+  }
+  .field::placeholder {
+    color: rgb(var(--color-text-muted));
+  }
+  .field:focus {
+    outline: none;
+    border-color: rgb(var(--color-accent) / 0.5);
+    box-shadow: 0 0 0 3px rgb(var(--color-accent) / 0.12);
+  }
+  /* El calendario nativo es negro sobre negro sin esto. */
+  .field::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.5;
+    cursor: pointer;
+  }
+
+  .btn-primary {
+    @apply rounded-xl px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--color-accent) / 0.95),
+      rgb(var(--color-accent) / 0.75)
+    );
+    color: rgb(6 26 18);
+    box-shadow: 0 6px 20px -8px rgb(var(--color-accent) / 0.7);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+
+  .btn-ghost {
+    @apply rounded-xl px-3 py-2 text-sm transition-colors;
+    color: rgb(var(--color-text-secondary));
+    border: 1px solid rgb(var(--color-surface) / var(--border-soft));
+  }
+  .btn-ghost:hover {
+    background: rgb(var(--color-surface) / var(--surface-1));
+    color: rgb(var(--color-text-primary));
+  }
+}
+
+/* Scrollbars al tono del resto; el default claro corta la estética. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--color-surface) / 0.18) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-surface) / 0.16);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* Foco visible y coherente en toda la app. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--color-accent) / 0.7);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/**
+ * Checkbox propio. accent-color solo tiñe el estado MARCADO: el vacío
+ * seguía siendo el cuadrado claro del navegador, que sobre el navy se veía
+ * como un parche. Con appearance:none se controlan los dos estados.
+ */
+input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  cursor: pointer;
+  border-radius: 7px;
+  border: 1.5px solid rgb(var(--color-surface) / 0.25);
+  background: rgb(0 0 0 / 0.25);
+  transition: all 0.15s ease;
+  position: relative;
+}
+input[type='checkbox']:hover {
+  border-color: rgb(var(--color-accent) / 0.6);
+}
+input[type='checkbox']:checked {
+  background: rgb(var(--color-accent));
+  border-color: rgb(var(--color-accent));
+}
+input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: no-repeat center / 70% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(6,26,18)' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12.5l5 5L20 6.5'/%3E%3C/svg%3E");
 }

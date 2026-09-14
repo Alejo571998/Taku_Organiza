@@ -1,18 +1,12 @@
 import { useState } from 'react'
 import { useSaveTab, useDeleteTab } from '@/hooks/useTabs'
-import type { TabWithFields } from '@/lib/queries/tabs'
 import { SortableList, SortableRow } from '@/components/ui/SortableList'
-import type { CategoryColor, FieldType } from '@/types/database.types'
-
-const COLORS: { key: CategoryColor; label: string }[] = [
-  { key: 'peach', label: 'Durazno' },
-  { key: 'sky', label: 'Cielo' },
-  { key: 'mint', label: 'Menta' },
-  { key: 'blush', label: 'Rosa' },
-  { key: 'lavender', label: 'Lavanda' },
-  { key: 'butter', label: 'Manteca' },
-  { key: 'seafoam', label: 'Espuma de mar' }
-]
+import ColorSwatches from '@/components/ui/ColorSwatches'
+import Modal from '@/components/ui/Modal'
+import { safeColor } from '@/lib/palette'
+import type { PaletteKey } from '@/lib/palette'
+import type { TabWithFields } from '@/lib/queries/tabs'
+import type { FieldType } from '@/types/database.types'
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'text', label: 'Notas (texto libre)' },
@@ -45,7 +39,7 @@ export default function TabEditorModal({ tab, onClose }: Props) {
   const deleteTabMutation = useDeleteTab()
 
   const [name, setName] = useState(tab?.name ?? '')
-  const [color, setColor] = useState<CategoryColor>(tab?.color ?? 'peach')
+  const [color, setColor] = useState<PaletteKey>(safeColor(tab?.color))
   const [fields, setFields] = useState<FieldFormValue[]>(
     tab?.tab_fields.map((f) => ({
       clientKey: f.id,
@@ -71,7 +65,10 @@ export default function TabEditorModal({ tab, onClose }: Props) {
       : null
 
   function addField() {
-    setFields((prev) => [...prev, { clientKey: makeClientKey(), name: '', type: 'text', options: [] }])
+    setFields((prev) => [
+      ...prev,
+      { clientKey: makeClientKey(), name: '', type: 'text', options: [] }
+    ])
   }
 
   function updateField(clientKey: string, patch: Partial<FieldFormValue>) {
@@ -125,89 +122,102 @@ export default function TabEditorModal({ tab, onClose }: Props) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-card border border-border p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-medium">{tab ? 'Editar pestaña' : 'Nueva pestaña'}</h2>
-          <button onClick={onClose} className="text-text-secondary text-sm" aria-label="Cerrar">
-            ✕
-          </button>
-        </div>
+  const label = 'mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted'
 
-        <label className="text-sm text-text-secondary block mb-1">Nombre</label>
+  return (
+    <Modal
+      title={tab ? 'Editar pestaña' : 'Nueva pestaña'}
+      onClose={onClose}
+      accent={color}
+      footer={
+        <div className="flex gap-2">
+          <button
+            onClick={handleSubmit}
+            disabled={saveTabMutation.isPending}
+            className="btn-primary flex-1"
+          >
+            {saveTabMutation.isPending ? 'Guardando…' : tab ? 'Guardar cambios' : 'Crear pestaña'}
+          </button>
+          {tab && (
+            <button
+              onClick={handleDelete}
+              disabled={deleteTabMutation.isPending}
+              className="btn-ghost text-danger hover:text-danger"
+            >
+              Eliminar
+            </button>
+          )}
+        </div>
+      }
+    >
+      <div>
+        <label className={label}>Nombre</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Ej: Gastos del auto"
-          className="w-full rounded border border-border px-3 py-2 text-sm mb-4 bg-surface"
+          className="field"
+          autoFocus
         />
+      </div>
 
-        <label className="text-sm text-text-secondary block mb-2">Color</label>
-        <div className="flex gap-2 flex-wrap mb-5">
-          {COLORS.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              aria-label={c.label}
-              onClick={() => setColor(c.key)}
-              style={{ background: `var(--cat-${c.key})` }}
-              className={`w-7 h-7 rounded-full ${
-                color === c.key ? 'ring-2 ring-offset-2 ring-text-primary' : ''
-              }`}
-            />
-          ))}
-        </div>
+      <div>
+        <label className={label}>Color</label>
+        <ColorSwatches value={color} onChange={setColor} />
+      </div>
 
-        <div className="border-t border-border pt-4 mb-4">
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <p className="text-sm text-text-secondary">Campos personalizados</p>
-            <button
-              type="button"
-              onClick={addField}
-              className="shrink-0 text-sm border border-border rounded px-2 py-1 whitespace-nowrap"
-            >
-              + Agregar campo
-            </button>
-          </div>
-          {/* Sin esta aclaración la gente crea un campo "Título" a mano y
-              después el formulario del ítem lo pide dos veces. */}
-          <p className="text-xs text-text-muted mb-3">
-            Todo ítem ya trae <strong>Título</strong> y <strong>Fecha</strong>. Agregá acá solo lo
-            propio de esta pestaña.
-          </p>
-          <SortableList
-            ids={fields.map((f) => f.clientKey)}
-            onReorder={(ids) =>
-              setFields((prev) =>
-                ids
-                  .map((k) => prev.find((f) => f.clientKey === k))
-                  .filter((f): f is FieldFormValue => Boolean(f))
-              )
-            }
-            className="flex flex-col gap-3"
+      <div className="border-t border-white/[0.07] pt-4">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className={`${label} mb-0`}>Campos personalizados</p>
+          <button
+            type="button"
+            onClick={addField}
+            className="btn-ghost shrink-0 whitespace-nowrap px-2.5 py-1 text-xs"
           >
-            {fields.map((f) => (
-              <SortableRow
-                key={f.clientKey}
-                id={f.clientKey}
-                className="flex items-start gap-1 rounded border border-border bg-bg p-2"
-              >
+            + Agregar campo
+          </button>
+        </div>
+        {/* Sin esta aclaración la gente crea un campo "Título" a mano y
+            después el formulario de la tarea lo pide dos veces. */}
+        <p className="mb-3 text-xs text-text-muted">
+          Toda tarea ya trae <strong className="text-text-secondary">Título</strong>,{' '}
+          <strong className="text-text-secondary">Fecha</strong> y{' '}
+          <strong className="text-text-secondary">Nota</strong>. Agregá acá solo lo propio de
+          esta pestaña.
+        </p>
+
+        <SortableList
+          ids={fields.map((f) => f.clientKey)}
+          onReorder={(ids) =>
+            setFields((prev) =>
+              ids
+                .map((k) => prev.find((f) => f.clientKey === k))
+                .filter((f): f is FieldFormValue => Boolean(f))
+            )
+          }
+          className="flex flex-col gap-2.5"
+        >
+          {fields.map((f) => (
+            <SortableRow
+              key={f.clientKey}
+              id={f.clientKey}
+              className="flex items-start gap-1 rounded-xl border border-white/[0.07] bg-black/20 p-2.5"
+            >
               {/* Nombre y tipo van uno debajo del otro. Puestos en la misma
                   fila no entraban ni en desktop y el modal scrolleaba en
                   horizontal, que fue lo que reportó el primer usuario. */}
-              <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                <div className="flex gap-2 items-start">
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <div className="flex items-start gap-2">
                   <input
                     value={f.name}
                     onChange={(e) => updateField(f.clientKey, { name: e.target.value })}
                     placeholder="Nombre del campo"
-                    className="min-w-0 flex-1 rounded border border-border px-2 py-1.5 text-sm bg-surface"
+                    className="field min-w-0 flex-1 py-1.5"
                   />
                   <button
                     type="button"
                     onClick={() => removeField(f.clientKey)}
-                    className="shrink-0 text-text-secondary text-sm px-1 py-1.5"
+                    className="shrink-0 px-1 py-1.5 text-sm text-text-muted hover:text-danger"
                     aria-label="Eliminar campo"
                   >
                     ✕
@@ -216,10 +226,10 @@ export default function TabEditorModal({ tab, onClose }: Props) {
                 <select
                   value={f.type}
                   onChange={(e) => updateField(f.clientKey, { type: e.target.value as FieldType })}
-                  className="w-full rounded border border-border px-2 py-1.5 text-sm bg-surface"
+                  className="field py-1.5"
                 >
                   {FIELD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
+                    <option key={t.value} value={t.value} className="bg-bg-deep">
                       {t.label}
                     </option>
                   ))}
@@ -229,63 +239,47 @@ export default function TabEditorModal({ tab, onClose }: Props) {
                     value={f.options.join(', ')}
                     onChange={(e) =>
                       updateField(f.clientKey, {
-                        options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
+                        options: e.target.value
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean)
                       })
                     }
                     placeholder="Opciones separadas por coma"
-                    className="w-full rounded border border-border px-2 py-1.5 text-sm bg-surface"
+                    className="field py-1.5"
                   />
                 )}
               </div>
-              </SortableRow>
-            ))}
-          </SortableList>
-          <div>
-            {fields.length === 0 && (
-              <p className="text-sm text-text-muted italic">Sin campos propios todavía.</p>
-            )}
-          </div>
-        </div>
+            </SortableRow>
+          ))}
+        </SortableList>
 
-        {amountEligibleFields.length > 0 && (
-          <div className="mb-5">
-            <label className="text-sm text-text-secondary block mb-1">Comparativa mensual usa</label>
-            <select
-              value={effectiveAmountFieldKey ?? ''}
-              onChange={(e) => setAmountFieldKey(e.target.value || null)}
-              className="w-full rounded border border-border px-3 py-2 text-sm bg-surface"
-            >
-              <option value="">Ninguno</option>
-              {amountEligibleFields.map((f) => (
-                <option key={f.clientKey} value={f.clientKey}>
-                  {f.name || '(sin nombre)'}
-                </option>
-              ))}
-            </select>
-          </div>
+        {fields.length === 0 && (
+          <p className="text-sm italic text-text-muted">Sin campos propios todavía.</p>
         )}
-
-        {error && <p className="text-sm text-danger mb-3">{error}</p>}
-
-        <div className="flex gap-2">
-          <button
-            onClick={handleSubmit}
-            disabled={saveTabMutation.isPending}
-            className="flex-1 bg-accent text-white rounded px-3 py-2 text-sm font-medium disabled:opacity-60"
-          >
-            {saveTabMutation.isPending ? 'Guardando...' : tab ? 'Guardar cambios' : 'Crear pestaña'}
-          </button>
-          {tab && (
-            <button
-              onClick={handleDelete}
-              disabled={deleteTabMutation.isPending}
-              className="text-sm text-danger px-3 py-2 border border-border rounded disabled:opacity-60"
-            >
-              Eliminar
-            </button>
-          )}
-        </div>
       </div>
-    </div>
+
+      {amountEligibleFields.length > 0 && (
+        <div>
+          <label className={label}>Comparativa mensual usa</label>
+          <select
+            value={effectiveAmountFieldKey ?? ''}
+            onChange={(e) => setAmountFieldKey(e.target.value || null)}
+            className="field"
+          >
+            <option value="" className="bg-bg-deep">
+              Ninguno
+            </option>
+            {amountEligibleFields.map((f) => (
+              <option key={f.clientKey} value={f.clientKey} className="bg-bg-deep">
+                {f.name || '(sin nombre)'}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {error && <p className="rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
+    </Modal>
   )
 }

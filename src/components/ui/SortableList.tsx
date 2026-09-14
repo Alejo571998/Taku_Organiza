@@ -71,7 +71,8 @@ export function SortableRow({ id, children, className = '', style }: RowProps) {
         ...style,
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.4 : undefined,
+        opacity: isDragging ? 0.5 : undefined,
+        boxShadow: isDragging ? '0 16px 40px -12px rgb(0 0 0 / 0.8)' : undefined,
         zIndex: isDragging ? 10 : undefined
       }}
       className={className}
@@ -81,7 +82,7 @@ export function SortableRow({ id, children, className = '', style }: RowProps) {
       <button
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab active:cursor-grabbing touch-none text-text-muted hover:text-text-secondary px-0.5 self-center"
+        className="shrink-0 cursor-grab touch-none self-center px-0.5 text-text-muted/50 transition-colors hover:text-text-secondary active:cursor-grabbing"
         aria-label="Reordenar"
       >
         <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">

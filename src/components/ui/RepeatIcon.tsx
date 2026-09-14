@@ -2,7 +2,13 @@
  * Marca de "esta tarea se repite". En SVG y no con el carácter ↻, por lo
  * mismo que los chevrons: Plus Jakarta Sans no trae ese glifo.
  */
-export default function RepeatIcon({ className = '' }: { className?: string }) {
+export default function RepeatIcon({
+  className = '',
+  style
+}: {
+  className?: string
+  style?: React.CSSProperties
+}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -14,6 +20,7 @@ export default function RepeatIcon({ className = '' }: { className?: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      style={style}
       aria-hidden="true"
     >
       <path d="M17 2l4 4-4 4" />

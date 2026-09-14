@@ -3,10 +3,11 @@ import { useTabs } from '@/hooks/useTabs'
 import { useItems, useToggleItem, useReorderItems, itemsKey } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
 import { addDays, formatLargo, esHoy, todayISO } from '@/lib/dates'
+import { itemColor, pastel } from '@/lib/palette'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
+import ItemRow from '@/components/items/ItemRow'
 import Chevron from '@/components/ui/Chevron'
-import { SortableList, SortableRow } from '@/components/ui/SortableList'
-import RepeatIcon from '@/components/ui/RepeatIcon'
+import { SortableList } from '@/components/ui/SortableList'
 import type { Item } from '@/types/database.types'
 
 export default function DayView() {
@@ -19,126 +20,108 @@ export default function DayView() {
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
-
-  function resumen(item: Item): string {
-    const tab = tabsById.get(item.tab_id)
-    if (!tab) return ''
-    return tab.tab_fields
-      .map((f) => {
-        const v = item.custom_data[f.id]
-        if (v === undefined || v === '' || v === null) return null
-        if (f.type === 'boolean') return v ? f.name : null
-        if (f.type === 'currency')
-          return `${f.name}: $${Number(v).toLocaleString('es-AR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}`
-        return `${f.name}: ${v}`
-      })
-      .filter(Boolean)
-      .join(' · ')
-  }
+  const pendientes = items?.filter((i) => !i.completed).length ?? 0
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-5">
-        {/* Chevrons en SVG y no "←"/"→": Plus Jakarta Sans no trae esos
-            glifos y el fallback los dibujaba como una raya. */}
-        <button
-          onClick={() => setDate(addDays(date, -1))}
-          className="border border-border rounded p-1.5 hover:bg-surface-alt transition-colors"
-          aria-label="Día anterior"
-        >
-          <Chevron className="rotate-180" />
-        </button>
-        <button
-          onClick={() => setDate(addDays(date, 1))}
-          className="border border-border rounded p-1.5 hover:bg-surface-alt transition-colors"
-          aria-label="Día siguiente"
-        >
-          <Chevron />
-        </button>
-        {/* first-letter y no capitalize: capitalize pondria mayuscula en
-            cada palabra ("6 De Septiembre") y en espanol va solo la inicial. */}
-        <h1 className="text-xl font-bold first-letter:uppercase">{formatLargo(date)}</h1>
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="glass flex shrink-0 items-center rounded-pill p-1">
+          <button
+            onClick={() => setDate(addDays(date, -1))}
+            className="rounded-full p-1.5 text-text-secondary transition-colors hover:bg-white/10 hover:text-text-primary"
+            aria-label="Día anterior"
+          >
+            <Chevron className="rotate-180" />
+          </button>
+          <button
+            onClick={() => setDate(addDays(date, 1))}
+            className="rounded-full p-1.5 text-text-secondary transition-colors hover:bg-white/10 hover:text-text-primary"
+            aria-label="Día siguiente"
+          >
+            <Chevron />
+          </button>
+        </div>
+
+        <div className="min-w-0">
+          {/* first-letter y no capitalize: capitalize pondría mayúscula en
+              cada palabra ("6 De Septiembre") y en español va solo la inicial. */}
+          <h1 className="truncate text-xl font-bold first-letter:uppercase sm:text-2xl">
+            {formatLargo(date)}
+          </h1>
+          <p className="text-xs text-text-muted">
+            {esHoy(date) ? 'Hoy' : 'Otro día'}
+            {items && items.length > 0 && ` · ${pendientes} pendiente${pendientes === 1 ? '' : 's'}`}
+          </p>
+        </div>
+
         {!esHoy(date) && (
           <button
             onClick={() => setDate(todayISO())}
-            className="text-sm text-accent-text underline ml-1"
+            className="btn-ghost px-2.5 py-1 text-xs"
           >
-            Hoy
+            Ir a hoy
           </button>
         )}
+
         <button
           onClick={() => setEditing('new')}
           disabled={!tabs || tabs.length === 0}
-          className="ml-auto bg-accent text-white rounded px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+          className="btn-primary ml-auto shrink-0"
         >
-          + Ítem
+          + Tarea
         </button>
       </div>
 
       {tabs && tabs.length === 0 && (
-        <p className="text-sm text-text-secondary">
-          Creá una pestaña desde la barra de abajo antes de cargar ítems: cada ítem vive dentro de una.
+        <p className="glass rounded-card px-4 py-6 text-sm text-text-secondary">
+          Creá una pestaña desde la barra de abajo antes de cargar tareas: cada tarea vive dentro
+          de una.
         </p>
       )}
 
-      {isLoading && <p className="text-sm text-text-muted italic">Cargando...</p>}
+      {isLoading && <p className="text-sm italic text-text-muted">Cargando…</p>}
       {error && (
-        <p className="text-sm text-danger">No se pudieron cargar los ítems. {error.message}</p>
+        <p className="rounded-card bg-danger/10 px-4 py-3 text-sm text-danger">
+          No se pudieron cargar las tareas. {error.message}
+        </p>
       )}
 
       {!isLoading && !error && items?.length === 0 && tabs && tabs.length > 0 && (
-        <p className="text-sm text-text-muted italic">Nada para este día.</p>
+        <div className="glass rounded-card px-4 py-10 text-center">
+          <p className="text-sm text-text-secondary">Nada para este día.</p>
+          <button onClick={() => setEditing('new')} className="mt-2 text-sm text-accent-text underline">
+            Agregar la primera
+          </button>
+        </div>
       )}
 
       {items && items.length > 0 && (
         <SortableList
           ids={items.map((i) => i.id)}
           onReorder={(ids) => reorder.mutate(ids)}
-          className="flex flex-col gap-1.5"
+          className="flex flex-col gap-2"
         >
           {items.map((item) => {
             const tab = tabsById.get(item.tab_id)
-            const detalle = resumen(item)
+            const c = itemColor(item.color, tab?.color)
             return (
-              <SortableRow
+              <ItemRow
                 key={item.id}
-                id={item.id}
-                className="flex items-start gap-2 bg-surface border border-border rounded-card px-2 py-2.5"
-                style={{ borderLeft: `4px solid var(--cat-${tab?.color ?? 'peach'})` }}
-              >
-              <input
-                type="checkbox"
-                checked={item.completed}
-                onChange={(e) => toggle.mutate({ id: item.id, completed: e.target.checked })}
-                className="mt-1 shrink-0"
-                aria-label={`Marcar "${item.title}"`}
+                item={item}
+                tab={tab}
+                onToggle={(completed) => toggle.mutate({ id: item.id, completed })}
+                onEdit={() => setEditing(item)}
+                trailing={
+                  tab && (
+                    <span
+                      className="hidden shrink-0 rounded-pill px-2.5 py-1 text-xs sm:inline"
+                      style={{ background: pastel(c, 0.14), color: pastel(c, 1) }}
+                    >
+                      {tab.name}
+                    </span>
+                  )
+                }
               />
-              <button onClick={() => setEditing(item)} className="text-left flex-1 min-w-0">
-                <span
-                  className={`flex items-center gap-1.5 text-sm ${
-                    item.completed ? 'line-through text-text-muted' : ''
-                  }`}
-                >
-                  {item.recurrence && <RepeatIcon className="shrink-0 text-text-muted" />}
-                  {item.title}
-                </span>
-                {detalle && <span className="text-xs text-text-secondary">{detalle}</span>}
-              </button>
-                {tab && (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full shrink-0 hidden sm:inline"
-                    style={{
-                      background: `var(--cat-${tab.color})`,
-                      color: `var(--cat-${tab.color}-text)`
-                    }}
-                  >
-                    {tab.name}
-                  </span>
-                )}
-              </SortableRow>
             )
           })}
         </SortableList>

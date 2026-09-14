@@ -5,40 +5,17 @@
 Calendario, gastos, facturas y tareas en una sola app, con pestañas totalmente
 personalizables (nombre, color pastel y campos propios).
 
-## Marca
+## Sistema de diseno
 
-La mascota se llama Taku y flota abajo a la derecha dentro de la app
-(`src/components/ui/Mascota.tsx`).
+Tema oscuro con superficies de vidrio. Los tokens viven en `src/index.css`
+como **tripletas RGB sin envolver** (`--pastel-mint: 152 235 196`): ese formato
+es el que permite aplicarles opacidad desde Tailwind (`bg-mint/15`) y desde
+`style`. Un token guardado como hex no lo admite.
 
-El arte original vive en `assets/img/taku-mascota.png` y **no** se usa directo:
-es RGB sin canal alfa, o sea que su fondo negro es opaco. `scripts/generar-mascota.mjs`
-le recorta el fondo con un flood fill desde los bordes y genera los PNG de
-`public/`. Para regenerarlos:
-
-```
-npm install --no-save pngjs
-node scripts/generar-mascota.mjs
-```
-
-## Stack
-
-React + Vite + TypeScript + Tailwind CSS + Supabase (auth, Postgres, RLS) + PWA instalable.
-
-## Setup
-
-1. `npm install`
-2. Creá un proyecto en [supabase.com](https://supabase.com), andá al SQL editor y corré `supabase/schema.sql`.
-3. Copiá `.env.example` a `.env` y completá `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (Project Settings → API).
-4. `npm run dev`
-
-## Build de producción
-
-```
-npm run build
-npm run preview
-```
-
-`vite-plugin-pwa` genera el service worker y el manifest en el build; para que la app sea instalable de verdad necesitás servirla sobre HTTPS (Vercel, Netlify, etc. lo dan gratis).
+La paleta pastel de 12 colores se define en `src/lib/palette.ts`. En la base se
+guarda la **clave semantica** (`mint`), nunca el hex, asi que recalibrar un tono
+no requiere migrar datos. Pestanas e items comparten la misma paleta; un item
+sin color propio hereda el de su pestana.
 
 ## Estado
 

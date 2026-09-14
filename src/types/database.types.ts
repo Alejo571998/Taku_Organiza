@@ -1,13 +1,15 @@
+import type { PaletteKey } from '@/lib/palette'
+
 export type FieldType = 'text' | 'number' | 'currency' | 'date' | 'boolean' | 'select'
 
-export type CategoryColor =
-  | 'peach'
-  | 'sky'
-  | 'mint'
-  | 'blush'
-  | 'lavender'
-  | 'butter'
-  | 'seafoam'
+/**
+ * El color de pestañas e ítems sale de la misma paleta. Se reexporta con el
+ * nombre viejo para no tocar cada import, pero la fuente es lib/palette.ts.
+ */
+export type CategoryColor = PaletteKey
+
+/** Cada cuánto se repite una tarea. null = no se repite. */
+export type Recurrence = 'daily' | 'weekly' | 'monthly'
 
 export interface TabField {
   id: string
@@ -27,9 +29,6 @@ export interface Tab {
   amount_field_id: string | null
 }
 
-/** Cada cuánto se repite una tarea. null = no se repite. */
-export type Recurrence = 'daily' | 'weekly' | 'monthly'
-
 export interface Item {
   id: string
   user_id: string
@@ -44,4 +43,8 @@ export interface Item {
   recurrence: Recurrence | null
   /** Hasta cuándo llega la serie. */
   recurrence_until: string | null
+  /** Texto libre opcional. null si nunca se escribió. */
+  note: string | null
+  /** Color propio. null = hereda el de su pestaña. */
+  color: CategoryColor | null
 }

@@ -9,14 +9,16 @@ const views = [
 
 export default function ViewToggle() {
   return (
-    <div className="inline-flex bg-surface-alt rounded p-1 mb-6">
+    <div className="glass inline-flex rounded-pill p-1">
       {views.map((v) => (
         <NavLink
           key={v.path}
           to={v.path}
           className={({ isActive }) =>
-            `px-4 py-1.5 text-sm rounded transition-colors ${
-              isActive ? 'bg-surface text-text-primary font-medium' : 'text-text-secondary'
+            `rounded-pill px-3.5 py-1.5 text-sm whitespace-nowrap transition-all sm:px-4 ${
+              isActive
+                ? 'bg-white/10 font-semibold text-text-primary shadow-sm'
+                : 'text-text-secondary hover:text-text-primary'
             }`
           }
         >

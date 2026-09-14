@@ -1,44 +1,54 @@
 import type { Config } from 'tailwindcss'
 
+/**
+ * Cada token se declara como `rgb(var(--x) / <alpha-value>)`. Ese
+ * marcador es lo que deja usar `bg-surface/10`, `text-mint/70` o
+ * `border-white/5` sobre variables CSS: sin él Tailwind no puede
+ * inyectar la opacidad y habría que declarar un token por intensidad.
+ */
+const conVar = (nombre: string) => `rgb(var(${nombre}) / <alpha-value>)`
+
+const PASTELES = [
+  'mint',
+  'sage',
+  'aqua',
+  'sky',
+  'blue',
+  'lavender',
+  'lilac',
+  'pink',
+  'coral',
+  'peach',
+  'butter',
+  'cream'
+] as const
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        bg: 'var(--color-bg)',
-        surface: 'var(--color-surface)',
-        'surface-alt': 'var(--color-surface-alt)',
-        border: 'var(--color-border)',
-        'text-primary': 'var(--color-text-primary)',
-        'text-secondary': 'var(--color-text-secondary)',
-        'text-muted': 'var(--color-text-muted)',
-        accent: 'var(--color-accent)',
-        'accent-soft': 'var(--color-accent-soft)',
-        'accent-text': 'var(--color-accent-text)',
-        danger: 'var(--color-danger)',
-        cat: {
-          peach: 'var(--cat-peach)',
-          'peach-text': 'var(--cat-peach-text)',
-          sky: 'var(--cat-sky)',
-          'sky-text': 'var(--cat-sky-text)',
-          mint: 'var(--cat-mint)',
-          'mint-text': 'var(--cat-mint-text)',
-          blush: 'var(--cat-blush)',
-          'blush-text': 'var(--cat-blush-text)',
-          lavender: 'var(--cat-lavender)',
-          'lavender-text': 'var(--cat-lavender-text)',
-          butter: 'var(--cat-butter)',
-          'butter-text': 'var(--cat-butter-text)',
-          seafoam: 'var(--cat-seafoam)',
-          'seafoam-text': 'var(--cat-seafoam-text)'
-        }
+        bg: conVar('--color-bg'),
+        'bg-deep': conVar('--color-bg-deep'),
+        surface: conVar('--color-surface'),
+        'text-primary': conVar('--color-text-primary'),
+        'text-secondary': conVar('--color-text-secondary'),
+        'text-muted': conVar('--color-text-muted'),
+        accent: conVar('--color-accent'),
+        'accent-text': conVar('--color-accent-text'),
+        danger: conVar('--color-danger'),
+        ...Object.fromEntries(PASTELES.map((c) => [c, conVar(`--pastel-${c}`)]))
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif']
       },
       borderRadius: {
-        DEFAULT: '10px',
-        card: '14px'
+        DEFAULT: '12px',
+        card: '20px',
+        pill: '999px'
+      },
+      boxShadow: {
+        glow: '0 0 24px -6px rgb(var(--color-accent) / 0.45)'
       }
     }
   },

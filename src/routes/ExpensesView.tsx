@@ -3,6 +3,7 @@ import { useTabs } from '@/hooks/useTabs'
 import { useItems } from '@/hooks/useItems'
 import { buildExpenseReport, formatARS } from '@/lib/expenses'
 import { currentMonthKey, lastMonths, monthStart, monthEnd, formatMes } from '@/lib/dates'
+import { pastel, safeColor } from '@/lib/palette'
 
 const RANGOS = [3, 6, 12]
 
@@ -23,15 +24,17 @@ export default function ExpensesView() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-5">
-        <h1 className="text-xl font-bold">Comparativa mensual</h1>
-        <div className="ml-auto inline-flex bg-surface-alt rounded p-1">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <h1 className="text-xl font-bold sm:text-2xl">Comparativa mensual</h1>
+        <div className="glass ml-auto inline-flex rounded-pill p-1">
           {RANGOS.map((n) => (
             <button
               key={n}
               onClick={() => setCantidad(n)}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
-                cantidad === n ? 'bg-surface text-text-primary font-medium' : 'text-text-secondary'
+              className={`rounded-pill px-3 py-1.5 text-sm transition-all ${
+                cantidad === n
+                  ? 'bg-white/10 font-semibold text-text-primary'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               {n} meses
@@ -40,74 +43,80 @@ export default function ExpensesView() {
         </div>
       </div>
 
-      {isLoading && <p className="text-sm text-text-muted italic">Cargando...</p>}
+      {isLoading && <p className="text-sm italic text-text-muted">Cargando…</p>}
       {error && (
-        <p className="text-sm text-danger">No se pudieron cargar los gastos. {error.message}</p>
+        <p className="rounded-card bg-danger/10 px-4 py-3 text-sm text-danger">
+          No se pudieron cargar los gastos. {error.message}
+        </p>
       )}
 
       {report && report.tabs.length === 0 && (
-        <p className="text-sm text-text-secondary">
+        <div className="glass rounded-card px-4 py-8 text-sm text-text-secondary">
           Ninguna pestaña tiene un campo de monto todavía. Editá una pestaña, agregale un campo de
-          tipo <strong>Número</strong> o <strong>Moneda</strong>, y elegilo en la opción
+          tipo <strong className="text-text-primary">Número</strong> o{' '}
+          <strong className="text-text-primary">Moneda</strong>, y elegilo en la opción
           <em> Comparativa mensual usa</em>.
-        </p>
+        </div>
       )}
 
       {report && report.tabs.length > 0 && (
         <>
-          <div className="flex flex-wrap items-center gap-4 mb-5">
+          <div className="glass mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-card px-4 py-3">
             {report.tabs.map((t) => (
-              <span key={t.id} className="flex items-center gap-1.5 text-sm">
+              <span key={t.id} className="flex items-center gap-2 text-sm">
                 <span
-                  className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ background: `var(--cat-${t.color})` }}
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: pastel(safeColor(t.color), 1) }}
                 />
                 {t.name}
                 <span className="text-text-muted">{formatARS(t.total)}</span>
               </span>
             ))}
             <span className="ml-auto text-sm">
-              Total <strong>{formatARS(report.grandTotal)}</strong>
+              Total <strong className="text-accent-text">{formatARS(report.grandTotal)}</strong>
             </span>
           </div>
 
-          <div className="flex flex-col gap-2 mb-8">
+          <div className="glass mb-6 flex flex-col gap-2.5 rounded-card px-4 py-4">
             {report.months.map((m, mi) => {
               const previo = mi > 0 ? report.months[mi - 1].total : null
               const delta = previo && previo > 0 ? (m.total - previo) / previo : null
               return (
                 <div key={m.month} className="flex items-center gap-3">
-                  <span className="w-16 text-sm text-text-secondary shrink-0">
+                  <span className="w-14 shrink-0 text-xs text-text-muted">
                     {formatMes(m.month)}
                   </span>
 
                   {/* Las barras se escalan contra el mes más alto del rango:
                       es lo que hace que la comparación se lea de un vistazo. */}
-                  <div className="flex-1 h-7 bg-surface-alt rounded overflow-hidden flex">
+                  <div className="flex h-7 flex-1 overflow-hidden rounded-lg bg-black/30">
                     {report.tabs.map((t, ti) => {
                       const monto = m.porTab[ti]
                       if (monto <= 0 || report.maxMonthTotal === 0) return null
+                      const c = safeColor(t.color)
                       return (
                         <div
                           key={t.id}
                           title={`${t.name}: ${formatARS(monto)}`}
                           style={{
                             width: `${(monto / report.maxMonthTotal) * 100}%`,
-                            background: `var(--cat-${t.color})`
+                            background: `linear-gradient(180deg, ${pastel(c, 0.9)}, ${pastel(c, 0.55)})`
                           }}
                         />
                       )
                     })}
                   </div>
 
-                  <span className="w-28 text-sm text-right shrink-0">{formatARS(m.total)}</span>
+                  <span className="w-24 shrink-0 text-right text-xs sm:w-28 sm:text-sm">
+                    {formatARS(m.total)}
+                  </span>
                   <span
-                    className={`w-16 text-xs text-right shrink-0 ${
+                    className={`w-12 shrink-0 text-right text-xs ${
                       delta === null
                         ? 'text-text-muted'
                         : delta > 0
                           ? 'text-danger'
-                          : 'text-text-secondary'
+                          : 'text-accent-text'
                     }`}
                   >
                     {delta === null ? '—' : `${delta > 0 ? '+' : ''}${Math.round(delta * 100)}%`}
@@ -117,30 +126,34 @@ export default function ExpensesView() {
             })}
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="text-sm border-collapse min-w-full">
+          <div className="glass overflow-x-auto rounded-card px-4 py-3">
+            <table className="min-w-full border-collapse text-sm">
               <thead>
-                <tr className="text-text-secondary">
-                  <th className="text-left font-normal py-2 pr-4">Pestaña</th>
+                <tr className="text-text-muted">
+                  <th className="py-2 pr-4 text-left text-xs font-medium uppercase tracking-wide">
+                    Pestaña
+                  </th>
                   {report.months.map((m) => (
                     <th
                       key={m.month}
-                      className="text-right font-normal py-2 px-3 whitespace-nowrap"
+                      className="whitespace-nowrap px-3 py-2 text-right text-xs font-medium uppercase tracking-wide"
                     >
                       {formatMes(m.month)}
                     </th>
                   ))}
-                  <th className="text-right font-normal py-2 pl-3">Total</th>
+                  <th className="py-2 pl-3 text-right text-xs font-medium uppercase tracking-wide">
+                    Total
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {report.tabs.map((t, ti) => (
-                  <tr key={t.id} className="border-t border-border">
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      <span className="flex items-center gap-1.5">
+                  <tr key={t.id} className="border-t border-white/[0.07]">
+                    <td className="whitespace-nowrap py-2.5 pr-4">
+                      <span className="flex items-center gap-2">
                         <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ background: `var(--cat-${t.color}-text)` }}
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: pastel(safeColor(t.color), 1) }}
                         />
                         {t.name}
                       </span>
@@ -148,26 +161,26 @@ export default function ExpensesView() {
                     {report.months.map((m) => (
                       <td
                         key={m.month}
-                        className={`text-right py-2 px-3 whitespace-nowrap ${
+                        className={`whitespace-nowrap px-3 py-2.5 text-right ${
                           m.porTab[ti] === 0 ? 'text-text-muted' : ''
                         }`}
                       >
                         {m.porTab[ti] === 0 ? '—' : formatARS(m.porTab[ti])}
                       </td>
                     ))}
-                    <td className="text-right py-2 pl-3 font-medium whitespace-nowrap">
+                    <td className="whitespace-nowrap py-2.5 pl-3 text-right font-medium">
                       {formatARS(t.total)}
                     </td>
                   </tr>
                 ))}
-                <tr className="border-t border-border font-medium">
-                  <td className="py-2 pr-4">Total</td>
+                <tr className="border-t border-white/15 font-semibold">
+                  <td className="py-2.5 pr-4">Total</td>
                   {report.months.map((m) => (
-                    <td key={m.month} className="text-right py-2 px-3 whitespace-nowrap">
+                    <td key={m.month} className="whitespace-nowrap px-3 py-2.5 text-right">
                       {formatARS(m.total)}
                     </td>
                   ))}
-                  <td className="text-right py-2 pl-3 whitespace-nowrap">
+                  <td className="whitespace-nowrap py-2.5 pl-3 text-right text-accent-text">
                     {formatARS(report.grandTotal)}
                   </td>
                 </tr>

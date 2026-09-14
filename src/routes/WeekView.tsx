@@ -13,6 +13,7 @@ import {
   diaDelMes,
   DIAS_SEMANA
 } from '@/lib/dates'
+import { itemColor, pastel } from '@/lib/palette'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
 import Chevron from '@/components/ui/Chevron'
 import RepeatIcon from '@/components/ui/RepeatIcon'
@@ -48,58 +49,62 @@ export default function WeekView() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <button
-          onClick={() => setDate(addDays(startOfWeek(date), -7))}
-          className="border border-border rounded p-1.5 hover:bg-surface-alt transition-colors"
-          aria-label="Semana anterior"
-        >
-          <Chevron className="rotate-180" />
-        </button>
-        <button
-          onClick={() => setDate(addDays(startOfWeek(date), 7))}
-          className="border border-border rounded p-1.5 hover:bg-surface-alt transition-colors"
-          aria-label="Semana siguiente"
-        >
-          <Chevron />
-        </button>
-        <h1 className="text-xl font-bold">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="glass flex shrink-0 items-center rounded-pill p-1">
+          <button
+            onClick={() => setDate(addDays(startOfWeek(date), -7))}
+            className="rounded-full p-1.5 text-text-secondary transition-colors hover:bg-white/10 hover:text-text-primary"
+            aria-label="Semana anterior"
+          >
+            <Chevron className="rotate-180" />
+          </button>
+          <button
+            onClick={() => setDate(addDays(startOfWeek(date), 7))}
+            className="rounded-full p-1.5 text-text-secondary transition-colors hover:bg-white/10 hover:text-text-primary"
+            aria-label="Semana siguiente"
+          >
+            <Chevron />
+          </button>
+        </div>
+
+        <h1 className="text-xl font-bold sm:text-2xl">
           {formatCorto(from)} – {formatCorto(to)}
         </h1>
+
         {!dias.some(esHoy) && (
-          <button
-            onClick={() => setDate(todayISO())}
-            className="text-sm text-accent-text underline ml-1"
-          >
+          <button onClick={() => setDate(todayISO())} className="btn-ghost px-2.5 py-1 text-xs">
             Esta semana
           </button>
         )}
+
         <button
           onClick={() => setCreando(dias.some(esHoy) ? todayISO() : from)}
           disabled={!tabs || tabs.length === 0}
-          className="ml-auto rounded bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          className="btn-primary ml-auto shrink-0"
         >
-          + Ítem
+          + Tarea
         </button>
       </div>
 
-      {isLoading && <p className="text-sm text-text-muted italic">Cargando...</p>}
+      {isLoading && <p className="text-sm italic text-text-muted">Cargando…</p>}
       {error && (
-        <p className="text-sm text-danger">No se pudieron cargar los ítems. {error.message}</p>
+        <p className="rounded-card bg-danger/10 px-4 py-3 text-sm text-danger">
+          No se pudieron cargar las tareas. {error.message}
+        </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
         {dias.map((dia, i) => {
           const delDia = porDia.get(dia) ?? []
+          const hoy = esHoy(dia)
           return (
             <div
               key={dia}
               onClick={() => navigate(`/dia?d=${dia}`)}
-              className={`flex min-h-32 cursor-pointer flex-col rounded-card border p-2 transition-colors ${
-                esHoy(dia)
-                  ? 'border-accent bg-accent-soft/25 hover:bg-accent-soft/40'
-                  : 'border-border bg-surface hover:bg-surface-alt'
+              className={`glass flex min-h-36 cursor-pointer flex-col rounded-card p-2.5 transition-colors hover:bg-white/[0.08] ${
+                hoy ? 'ring-1 ring-accent/40' : ''
               }`}
+              style={hoy ? { background: 'rgb(var(--color-accent) / 0.07)' } : undefined}
             >
               {/* Botón real para que el día también se pueda abrir con teclado:
                   un div con onClick no recibe foco. */}
@@ -108,15 +113,19 @@ export default function WeekView() {
                 className="mb-2 flex items-baseline gap-1.5 text-left"
                 title="Ver el día"
               >
-                <span className="text-xs text-text-secondary">{DIAS_SEMANA[i]}</span>
-                <span className={`text-sm ${esHoy(dia) ? 'font-bold text-accent-text' : ''}`}>
+                <span className="text-[11px] uppercase tracking-wide text-text-muted">
+                  {DIAS_SEMANA[i]}
+                </span>
+                <span
+                  className={`text-sm font-semibold ${hoy ? 'text-accent-text' : 'text-text-primary'}`}
+                >
                   {diaDelMes(dia)}
                 </span>
               </button>
 
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-1.5">
                 {delDia.map((item) => {
-                  const tab = tabsById.get(item.tab_id)
+                  const c = itemColor(item.color, tabsById.get(item.tab_id)?.color)
                   return (
                     <li key={item.id} className="flex items-start gap-1.5">
                       <input
@@ -126,23 +135,35 @@ export default function WeekView() {
                         onChange={(e) =>
                           toggle.mutate({ id: item.id, completed: e.target.checked })
                         }
-                        className="mt-[3px] shrink-0"
+                        className="mt-[3px] shrink-0 scale-90"
                         aria-label={`Marcar "${item.title}"`}
                       />
                       <span
-                        className="min-w-0 flex-1 rounded px-1 py-0.5 text-xs leading-snug"
+                        className="min-w-0 flex-1 rounded-lg py-0.5 pl-2 pr-1.5 text-xs leading-snug"
                         style={{
-                          background: `var(--cat-${tab?.color ?? 'peach'})`,
-                          color: `var(--cat-${tab?.color ?? 'peach'}-text)`
+                          background: pastel(c, 0.12),
+                          borderLeft: `2px solid ${pastel(c, item.completed ? 0.3 : 0.85)}`
                         }}
                       >
                         <span
                           className={`flex items-center gap-1 ${
-                            item.completed ? 'line-through opacity-60' : ''
+                            item.completed ? 'text-text-muted line-through' : 'text-text-primary'
                           }`}
                         >
-                          {item.recurrence && <RepeatIcon className="shrink-0 opacity-70" />}
+                          {item.recurrence && (
+                            <RepeatIcon className="shrink-0" style={{ color: pastel(c, 0.8) }} />
+                          )}
                           <span className="truncate">{item.title}</span>
+                          {item.note && (
+                            <span
+                              aria-label="Tiene nota"
+                              title="Tiene nota"
+                              className="ml-auto shrink-0 text-[10px]"
+                              style={{ color: pastel(c, 0.9) }}
+                            >
+                              ●
+                            </span>
+                          )}
                         </span>
                       </span>
                     </li>
@@ -158,11 +179,7 @@ export default function WeekView() {
       </div>
 
       {creando && tabs && (
-        <ItemEditorModal
-          tabs={tabs}
-          defaultDate={creando}
-          onClose={() => setCreando(null)}
-        />
+        <ItemEditorModal tabs={tabs} defaultDate={creando} onClose={() => setCreando(null)} />
       )}
     </div>
   )

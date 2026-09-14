@@ -14,6 +14,7 @@ import {
   diaDelMes,
   DIAS_SEMANA
 } from '@/lib/dates'
+import { itemColor, pastel } from '@/lib/palette'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
 import Chevron from '@/components/ui/Chevron'
 import type { Item } from '@/types/database.types'
@@ -29,7 +30,6 @@ const MAX_VISIBLES = 3
  * editor convertía un gesto de navegación en uno de edición. Se edita solo
  * en Día y en la lista de la pestaña.
  */
-
 export default function MonthView() {
   const [date, setDate] = useSelectedDate()
   const navigate = useNavigate()
@@ -56,48 +56,58 @@ export default function MonthView() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-5">
-        <button
-          onClick={() => setDate(monthStart(addMonths(mes, -1)))}
-          className="border border-border rounded p-1.5 hover:bg-surface-alt transition-colors"
-          aria-label="Mes anterior"
-        >
-          <Chevron className="rotate-180" />
-        </button>
-        <button
-          onClick={() => setDate(monthStart(addMonths(mes, 1)))}
-          className="border border-border rounded p-1.5 hover:bg-surface-alt transition-colors"
-          aria-label="Mes siguiente"
-        >
-          <Chevron />
-        </button>
-        <h1 className="text-xl font-bold first-letter:uppercase">{formatMesLargo(mes)}</h1>
-        {mes !== monthKey(todayISO()) && (
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="glass flex shrink-0 items-center rounded-pill p-1">
           <button
-            onClick={() => setDate(todayISO())}
-            className="text-sm text-accent-text underline ml-1"
+            onClick={() => setDate(monthStart(addMonths(mes, -1)))}
+            className="rounded-full p-1.5 text-text-secondary transition-colors hover:bg-white/10 hover:text-text-primary"
+            aria-label="Mes anterior"
           >
+            <Chevron className="rotate-180" />
+          </button>
+          <button
+            onClick={() => setDate(monthStart(addMonths(mes, 1)))}
+            className="rounded-full p-1.5 text-text-secondary transition-colors hover:bg-white/10 hover:text-text-primary"
+            aria-label="Mes siguiente"
+          >
+            <Chevron />
+          </button>
+        </div>
+
+        <h1 className="text-xl font-bold first-letter:uppercase sm:text-2xl">
+          {formatMesLargo(mes)}
+        </h1>
+
+        {mes !== monthKey(todayISO()) && (
+          <button onClick={() => setDate(todayISO())} className="btn-ghost px-2.5 py-1 text-xs">
             Este mes
           </button>
         )}
+
         <button
           onClick={() => setCreando(mes === monthKey(todayISO()) ? todayISO() : monthStart(mes))}
           disabled={!tabs || tabs.length === 0}
-          className="ml-auto rounded bg-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+          className="btn-primary ml-auto shrink-0"
         >
-          + Ítem
+          + Tarea
         </button>
       </div>
 
-      {isLoading && <p className="text-sm text-text-muted italic">Cargando...</p>}
+      {isLoading && <p className="text-sm italic text-text-muted">Cargando…</p>}
       {error && (
-        <p className="text-sm text-danger">No se pudieron cargar los ítems. {error.message}</p>
+        <p className="rounded-card bg-danger/10 px-4 py-3 text-sm text-danger">
+          No se pudieron cargar las tareas. {error.message}
+        </p>
       )}
 
-      <div className="grid grid-cols-7 gap-px bg-border border border-border rounded-card overflow-hidden">
+      <div className="glass grid grid-cols-7 gap-px overflow-hidden rounded-card">
         {DIAS_SEMANA.map((d) => (
-          <div key={d} className="bg-surface-alt text-xs text-text-secondary text-center py-1.5">
-            {d}
+          <div
+            key={d}
+            className="bg-white/[0.04] py-2 text-center text-[11px] uppercase tracking-wide text-text-muted"
+          >
+            <span className="hidden sm:inline">{d}</span>
+            <span className="sm:hidden">{d.charAt(0)}</span>
           </div>
         ))}
 
@@ -106,52 +116,75 @@ export default function MonthView() {
           const delMes = monthKey(dia) === mes
           const visibles = delDia.slice(0, MAX_VISIBLES)
           const resto = delDia.length - visibles.length
+          const hoy = esHoy(dia)
 
           return (
             <div
               key={dia}
               onClick={() => navigate(`/dia?d=${dia}`)}
-              className={`flex min-h-24 cursor-pointer flex-col gap-1 bg-surface p-1.5 transition-colors hover:bg-surface-alt ${
-                delMes ? '' : 'opacity-40'
+              className={`flex min-h-24 cursor-pointer flex-col gap-1 p-1.5 transition-colors hover:bg-white/[0.06] ${
+                delMes ? 'bg-black/20' : 'bg-black/40 opacity-45'
               }`}
             >
+              {/* Botón real para que el día también se abra con teclado:
+                  un div con onClick no recibe foco. */}
               <button
                 onClick={() => navigate(`/dia?d=${dia}`)}
-                className={`text-xs self-start rounded px-1 ${
-                  esHoy(dia)
-                    ? 'bg-accent text-white font-bold'
-                    : 'text-text-secondary hover:text-text-primary'
+                className={`grid h-6 w-6 shrink-0 place-items-center self-start rounded-full text-xs transition-colors ${
+                  hoy
+                    ? 'bg-accent font-bold text-[rgb(6,26,18)]'
+                    : 'text-text-secondary hover:bg-white/10 hover:text-text-primary'
                 }`}
                 title="Ver el día"
               >
                 {diaDelMes(dia)}
               </button>
 
-              {visibles.map((item) => {
-                const tab = tabsById.get(item.tab_id)
-                return (
-                  <span
-                    key={item.id}
-                    className="truncate rounded px-1 py-0.5 text-[11px] leading-tight"
-                    style={{
-                      background: `var(--cat-${tab?.color ?? 'peach'})`,
-                      color: `var(--cat-${tab?.color ?? 'peach'}-text)`
-                    }}
-                    title={item.title}
-                  >
-                    <span className={item.completed ? 'line-through opacity-60' : ''}>
-                      {item.title}
-                    </span>
-                  </span>
-                )
-              })}
+              {/* En pantallas chicas la celda mide ~48px: el título entraría
+                  en tres letras. Ahí se muestran puntos de color, que es lo
+                  que una grilla de mes necesita comunicar a ese tamaño. */}
+              <div className="flex flex-wrap gap-1 sm:hidden">
+                {delDia.slice(0, 6).map((item) => {
+                  const c = itemColor(item.color, tabsById.get(item.tab_id)?.color)
+                  return (
+                    <span
+                      key={item.id}
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: pastel(c, item.completed ? 0.3 : 0.95) }}
+                      title={item.title}
+                    />
+                  )
+                })}
+              </div>
 
-              {resto > 0 && (
-                <span className="px-1 text-[11px] text-text-muted">+{resto} más</span>
-              )}
+              <div className="hidden flex-col gap-1 sm:flex">
+                {visibles.map((item) => {
+                  const c = itemColor(item.color, tabsById.get(item.tab_id)?.color)
+                  return (
+                    <span
+                      key={item.id}
+                      className="truncate rounded py-0.5 pl-1.5 pr-1 text-[11px] leading-tight"
+                      style={{
+                        background: pastel(c, 0.13),
+                        borderLeft: `2px solid ${pastel(c, item.completed ? 0.3 : 0.8)}`,
+                        color: item.completed
+                          ? 'rgb(var(--color-text-muted))'
+                          : 'rgb(var(--color-text-primary))'
+                      }}
+                      title={item.note ? `${item.title} — ${item.note}` : item.title}
+                    >
+                      <span className={item.completed ? 'line-through' : ''}>{item.title}</span>
+                    </span>
+                  )
+                })}
+
+                {resto > 0 && (
+                  <span className="px-1 text-[11px] text-text-muted">+{resto} más</span>
+                )}
+              </div>
 
               {/* Relleno: el hueco de la celda sigue siendo zona de toque. */}
-              <div className="min-h-4 flex-1" />
+              <div className="min-h-3 flex-1" />
             </div>
           )
         })}

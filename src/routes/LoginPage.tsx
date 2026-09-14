@@ -32,33 +32,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-sm bg-surface border border-border rounded-card p-6">
-        <h1 className="text-2xl font-bold tracking-tight">TAKU</h1>
-        <p className="text-sm text-accent-text mb-5">Tu día, en orden.</p>
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="glass-strong w-full max-w-sm rounded-card p-7">
+        <img src="/taku.png" alt="" aria-hidden="true" className="mb-3 h-16 w-16 drop-shadow-lg" />
+        <h1 className="text-3xl font-bold tracking-tight">TAKU</h1>
+        <p className="mb-6 text-sm text-accent-text">Tu día, en orden.</p>
         <p className="text-sm text-text-secondary mb-6">
           {mode === 'signin' ? 'Iniciá sesión para continuar' : 'Creá tu cuenta'}
         </p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
-            <label className="text-sm text-text-secondary block mb-1">Email</label>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted">Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border border-border px-3 py-2 text-sm bg-surface"
+              className="field"
             />
           </div>
           <div>
-            <label className="text-sm text-text-secondary block mb-1">Contraseña</label>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted">Contraseña</label>
             <input
               type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded border border-border px-3 py-2 text-sm bg-surface"
+              className="field"
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
@@ -66,7 +67,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 bg-accent text-white rounded px-3 py-2 text-sm font-medium disabled:opacity-60"
+            className="btn-primary mt-2"
           >
             {submitting ? 'Un momento...' : mode === 'signin' ? 'Iniciar sesión' : 'Crear cuenta'}
           </button>
