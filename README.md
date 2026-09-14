@@ -35,6 +35,20 @@ Pendiente de configuracion (no de codigo):
 - SMTP propio: el correo incluido de Supabase esta limitado a 2 mails/hora
   y Supabase lo marca como solo para testing.
 
+## Contrasenas
+
+`src/lib/pwned.ts` rechaza contrasenas que aparezcan en filtraciones
+publicas, al registrarse y al cambiarlas. Reemplaza a la opcion "Prevent
+use of leaked passwords" de Supabase, que es de plan Pro.
+
+Usa k-anonimato contra la API de HaveIBeenPwned: se calcula el SHA-1 en el
+navegador y se mandan **solo los primeros 5 de sus 40 caracteres**; la API
+devuelve los cientos de hashes que empiezan igual y la comparacion final
+pasa en el cliente. La contrasena no sale del navegador.
+
+Falla abierta a proposito: si la API no responde o tarda mas de 3,5s, el
+registro sigue. Es una capa extra, no la unica defensa.
+
 ## Base de datos
 
 `supabase/schema.sql` es el schema completo para un proyecto **nuevo**.

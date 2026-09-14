@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { vecesFiltrada, mensajeFiltrada } from './pwned'
 
 interface AuthContextValue {
   user: User | null
@@ -53,7 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null }
   }
 
+  /**
+   * El chequeo de contraseñas filtradas va acá y no en el formulario para que
+   * valga para cualquier pantalla que registre o cambie la contraseña: si
+   * mañana aparece otra, ya queda cubierta.
+   */
   async function signUp(email: string, password: string) {
+    const filtrada = await vecesFiltrada(password)
+    if (filtrada > 0) return { error: mensajeFiltrada(filtrada) }
+
     const { error } = await supabase.auth.signUp({ email, password })
     return { error: error?.message ?? null }
   }
@@ -68,6 +77,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function confirmPasswordReset(email: string, code: string, newPassword: string) {
+    // Antes de gastar el código: si la contraseña elegida está filtrada, el
+    // código sigue siendo válido y solo hay que elegir otra. Al revés la
+    // dejaríamos afuera con un código ya consumido.
+    const filtrada = await vecesFiltrada(newPassword)
+    if (filtrada > 0) return { error: mensajeFiltrada(filtrada) }
+
     // verifyOtp valida el código y de paso abre sesión, que es lo que después
     // habilita el updateUser. Si se hiciera al revés no habría sesión con la
     // cual autorizar el cambio de contraseña.
