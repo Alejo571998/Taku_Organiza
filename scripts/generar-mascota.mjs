@@ -20,6 +20,7 @@ import { PNG } from 'pngjs'
 const ORIGEN = 'assets/img/Taku-definitivo.png'
 const SALIDAS = [
   ['public/taku.png', 256],
+  ['public/taku-384.png', 384],
   ['public/icons/icon-192.png', 192],
   ['public/icons/icon-512.png', 512]
 ]

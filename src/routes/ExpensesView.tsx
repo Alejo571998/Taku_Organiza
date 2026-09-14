@@ -4,6 +4,7 @@ import { useItems } from '@/hooks/useItems'
 import { buildExpenseReport, formatARS } from '@/lib/expenses'
 import { currentMonthKey, lastMonths, monthStart, monthEnd, formatMes } from '@/lib/dates'
 import { pastel, safeColor } from '@/lib/palette'
+import TakuVacio from '@/components/taku/TakuVacio'
 
 const RANGOS = [3, 6, 12]
 
@@ -51,12 +52,17 @@ export default function ExpensesView() {
       )}
 
       {report && report.tabs.length === 0 && (
-        <div className="glass rounded-card px-4 py-8 text-sm text-text-secondary">
-          Ninguna pestaña tiene un campo de monto todavía. Editá una pestaña, agregale un campo de
-          tipo <strong className="text-text-primary">Número</strong> o{' '}
-          <strong className="text-text-primary">Moneda</strong>, y elegilo en la opción
-          <em> Comparativa mensual usa</em>.
-        </div>
+        <TakuVacio
+          titulo="Todavía no hay montos que comparar"
+          detalle={
+            <>
+              Editá una pestaña, agregale un campo de tipo{' '}
+              <strong className="text-text-primary">Número</strong> o{' '}
+              <strong className="text-text-primary">Moneda</strong>, y elegilo en la opción
+              <em> Comparativa mensual usa</em>.
+            </>
+          }
+        />
       )}
 
       {report && report.tabs.length > 0 && (

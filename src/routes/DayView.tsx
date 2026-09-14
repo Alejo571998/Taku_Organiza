@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTabs } from '@/hooks/useTabs'
 import { useItems, useToggleItem, useReorderItems, itemsKey } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
@@ -8,6 +9,7 @@ import ItemEditorModal from '@/components/items/ItemEditorModal'
 import ItemRow from '@/components/items/ItemRow'
 import Chevron from '@/components/ui/Chevron'
 import { SortableList } from '@/components/ui/SortableList'
+import TakuVacio from '@/components/taku/TakuVacio'
 import type { Item } from '@/types/database.types'
 
 export default function DayView() {
@@ -18,9 +20,26 @@ export default function DayView() {
   const toggle = useToggleItem(rangoKey)
   const reorder = useReorderItems(rangoKey)
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
+  const [params, setParams] = useSearchParams()
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
   const pendientes = items?.filter((i) => !i.completed).length ?? 0
+
+  /**
+   * El atajo "Nueva tarea" de Taku llega como ?nueva=1, porque el editor vive
+   * acá y el dock no puede abrirlo desde afuera.
+   *
+   * Espera a que carguen las pestañas: sin ninguna, el editor no tiene dónde
+   * guardar. Y consume el parámetro siempre, para que un refresh no reabra el
+   * formulario solo.
+   */
+  useEffect(() => {
+    if (params.get('nueva') === null || !tabs) return
+    const limpio = new URLSearchParams(params)
+    limpio.delete('nueva')
+    setParams(limpio, { replace: true })
+    if (tabs.length > 0) setEditing('new')
+  }, [params, tabs, setParams])
 
   return (
     <div>
@@ -73,10 +92,10 @@ export default function DayView() {
       </div>
 
       {tabs && tabs.length === 0 && (
-        <p className="glass rounded-card px-4 py-6 text-sm text-text-secondary">
-          Creá una pestaña desde la barra de abajo antes de cargar tareas: cada tarea vive dentro
-          de una.
-        </p>
+        <TakuVacio
+          titulo="Empecemos por una pestaña"
+          detalle="Cada tarea vive dentro de una: Trabajo, Casa, Gastos… Creá la primera desde la barra de abajo."
+        />
       )}
 
       {isLoading && <p className="text-sm italic text-text-muted">Cargando…</p>}
@@ -87,12 +106,14 @@ export default function DayView() {
       )}
 
       {!isLoading && !error && items?.length === 0 && tabs && tabs.length > 0 && (
-        <div className="glass rounded-card px-4 py-10 text-center">
-          <p className="text-sm text-text-secondary">Nada para este día.</p>
-          <button onClick={() => setEditing('new')} className="mt-2 text-sm text-accent-text underline">
-            Agregar la primera
-          </button>
-        </div>
+        <TakuVacio
+          titulo={esHoy(date) ? 'Hoy no tenés nada anotado.' : 'Nada para este día.'}
+          accion={
+            <button onClick={() => setEditing('new')} className="btn-primary">
+              Agregar la primera
+            </button>
+          }
+        />
       )}
 
       {items && items.length > 0 && (

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth-context'
+import TakuPeek from '@/components/taku/TakuPeek'
+import type { EstadoTaku } from '@/components/taku/TakuProvider'
 
 export default function LoginPage() {
   const { user, signIn, signUp } = useAuth()
@@ -31,63 +33,82 @@ export default function LoginPage() {
     }
   }
 
+  /**
+   * Taku reacciona al formulario. Es la primera pantalla de la app y la única
+   * sin datos que tapar, así que es donde más barato sale darle carácter: se
+   * sacude si algo falla, piensa mientras espera al servidor y festeja cuando
+   * la cuenta queda creada.
+   */
+  const estadoTaku: EstadoTaku = error
+    ? 'alerta'
+    : notice
+      ? 'festejando'
+      : submitting
+        ? 'pensando'
+        : 'idle'
+
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="glass-strong w-full max-w-sm rounded-card p-7">
-        <img src="/taku.png" alt="" aria-hidden="true" className="mb-3 h-16 w-16 drop-shadow-lg" />
-        <h1 className="text-3xl font-bold tracking-tight">TAKU</h1>
-        <p className="mb-6 text-sm text-accent-text">Tu día, en orden.</p>
-        <p className="text-sm text-text-secondary mb-6">
-          {mode === 'signin' ? 'Iniciá sesión para continuar' : 'Creá tu cuenta'}
-        </p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="field"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted">Contraseña</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="field"
-            />
-          </div>
-          {error && <p className="text-sm text-danger">{error}</p>}
-          {notice && <p className="text-sm text-accent-text">{notice}</p>}
+    // El padding de arriba es el lugar donde se asoma Taku: sin eso, en una
+    // pantalla baja quedaría cortado contra el borde.
+    <div className="flex min-h-screen items-center justify-center px-4 pb-10 pt-28 sm:pt-40">
+      <div className="relative w-full max-w-sm">
+        <TakuPeek estado={estadoTaku} />
+
+        <div className="glass-strong relative z-10 rounded-card p-7">
+          <h1 className="text-3xl font-bold tracking-tight">TAKU</h1>
+          <p className="mb-6 text-sm text-accent-text">Tu día, en orden.</p>
+          <p className="text-sm text-text-secondary mb-6">
+            {mode === 'signin' ? 'Iniciá sesión para continuar' : 'Creá tu cuenta'}
+          </p>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="field"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted">Contraseña</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="field"
+              />
+            </div>
+            {error && <p className="text-sm text-danger">{error}</p>}
+            {notice && <p className="text-sm text-accent-text">{notice}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn-primary mt-2"
+            >
+              {submitting ? 'Un momento...' : mode === 'signin' ? 'Iniciar sesión' : 'Crear cuenta'}
+            </button>
+          </form>
+          {mode === 'signin' && (
+            <Link to="/recuperar" className="mt-4 block text-sm text-accent-text underline">
+              Me olvidé la contraseña
+            </Link>
+          )}
           <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary mt-2"
+            type="button"
+            onClick={() => {
+              setMode(mode === 'signin' ? 'signup' : 'signin')
+              setError(null)
+              setNotice(null)
+            }}
+            className="mt-4 text-sm text-accent-text underline"
           >
-            {submitting ? 'Un momento...' : mode === 'signin' ? 'Iniciar sesión' : 'Crear cuenta'}
+            {mode === 'signin' ? '¿No tenés cuenta? Creá una' : '¿Ya tenés cuenta? Iniciá sesión'}
           </button>
-        </form>
-        {mode === 'signin' && (
-          <Link to="/recuperar" className="mt-4 block text-sm text-accent-text underline">
-            Me olvidé la contraseña
-          </Link>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            setMode(mode === 'signin' ? 'signup' : 'signin')
-            setError(null)
-            setNotice(null)
-          }}
-          className="mt-4 text-sm text-accent-text underline"
-        >
-          {mode === 'signin' ? '¿No tenés cuenta? Creá una' : '¿Ya tenés cuenta? Iniciá sesión'}
-        </button>
+        </div>
       </div>
     </div>
   )

@@ -8,6 +8,7 @@ import ItemEditorModal from '@/components/items/ItemEditorModal'
 import ItemRow from '@/components/items/ItemRow'
 import TabEditorModal from '@/components/tabs/TabEditorModal'
 import { SortableList } from '@/components/ui/SortableList'
+import TakuVacio from '@/components/taku/TakuVacio'
 import type { Item } from '@/types/database.types'
 
 /** Lista completa de una pestaña: todas sus tareas, sin importar la fecha. */
@@ -73,15 +74,14 @@ export default function TabListView() {
       )}
 
       {!isLoading && !error && items?.length === 0 && (
-        <div className="glass rounded-card px-4 py-10 text-center">
-          <p className="text-sm text-text-secondary">Esta pestaña todavía no tiene tareas.</p>
-          <button
-            onClick={() => setEditandoItem('new')}
-            className="mt-2 text-sm text-accent-text underline"
-          >
-            Agregar la primera
-          </button>
-        </div>
+        <TakuVacio
+          titulo="Esta pestaña todavía no tiene tareas."
+          accion={
+            <button onClick={() => setEditandoItem('new')} className="btn-primary">
+              Agregar la primera
+            </button>
+          }
+        />
       )}
 
       {items && items.length > 0 && (

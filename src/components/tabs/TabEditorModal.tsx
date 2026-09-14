@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { useSaveTab, useDeleteTab } from '@/hooks/useTabs'
+import { useNavigate } from 'react-router-dom'
+import { useSaveTab, useDeleteTab, useTabs } from '@/hooks/useTabs'
+import { useTaku } from '@/components/taku/TakuProvider'
 import { SortableList, SortableRow } from '@/components/ui/SortableList'
 import ColorSwatches from '@/components/ui/ColorSwatches'
 import Modal from '@/components/ui/Modal'
@@ -37,6 +39,16 @@ interface Props {
 export default function TabEditorModal({ tab, onClose }: Props) {
   const saveTabMutation = useSaveTab()
   const deleteTabMutation = useDeleteTab()
+  const { data: tabsExistentes } = useTabs()
+  const navigate = useNavigate()
+  const taku = useTaku()
+
+  /**
+   * Crear la primera pestaña es el momento en que la app recién empieza a
+   * servir para algo, y también donde más gente se queda: la pestaña sola no
+   * hace nada hasta que tenga una tarea adentro. Taku encadena ese paso.
+   */
+  const esLaPrimera = !tab && (tabsExistentes?.length ?? 0) === 0
 
   const [name, setName] = useState(tab?.name ?? '')
   const [color, setColor] = useState<PaletteKey>(safeColor(tab?.color))
@@ -101,6 +113,14 @@ export default function TabEditorModal({ tab, onClose }: Props) {
           isAmount: f.clientKey === effectiveAmountFieldKey
         }))
       })
+      if (esLaPrimera) {
+        taku.decir({
+          prioridad: 1,
+          estado: 'festejando',
+          texto: `Lista la pestaña "${name.trim()}". Ahora cargale una tarea.`,
+          acciones: [{ texto: 'Nueva tarea', onClick: () => navigate('/dia?nueva=1') }]
+        })
+      }
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo guardar la pestaña.')

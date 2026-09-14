@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'taku.png'],
+      includeAssets: ['favicon.png', 'taku.png', 'taku-384.png'],
       manifest: {
         name: 'TAKU — Tu día, en orden.',
         short_name: 'TAKU',

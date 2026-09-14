@@ -210,3 +210,138 @@ input[type='checkbox']:checked::after {
   inset: 0;
   background: no-repeat center / 70% url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(6,26,18)' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12.5l5 5L20 6.5'/%3E%3C/svg%3E");
 }
+
+/* ---------------------------------------------------------------------------
+   Taku.
+
+   El arte del personaje es uno solo y no se rediseña, así que sus estados de
+   ánimo son movimiento: cada clase es una manera de moverse. Agregar un estado
+   nuevo es agregar un keyframe, nunca dibujar otra pose.
+
+   Las animaciones con cuenta finita (saludar, festejar, alertar) terminan
+   solas y el provider devuelve el estado a idle: son gestos, no modos.
+
+   OJO: estas clases mandan sobre `transform`. Si hace falta desplazar a Taku,
+   el translate va en un div envolvente, nunca en la misma etiqueta.
+   --------------------------------------------------------------------------- */
+.taku-idle {
+  animation: taku-flotar 4.5s ease-in-out infinite;
+}
+.taku-saluda {
+  animation: taku-saludar 1.05s ease-in-out 2;
+}
+.taku-piensa {
+  animation: taku-pensar 1.3s ease-in-out infinite;
+}
+.taku-festeja {
+  animation: taku-festejar 0.72s cubic-bezier(0.3, 1.4, 0.5, 1) 2;
+}
+.taku-alerta {
+  animation: taku-alertar 0.5s ease-in-out 2;
+}
+
+@keyframes taku-flotar {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(-1.5deg);
+  }
+}
+
+@keyframes taku-saludar {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(-9deg) translateY(-4px);
+  }
+  60% {
+    transform: rotate(7deg) translateY(-4px);
+  }
+}
+
+@keyframes taku-pensar {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.03);
+  }
+}
+
+/* El achatado al caer es lo que separa un salto de un desplazamiento. */
+@keyframes taku-festejar {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  35% {
+    transform: translateY(-14px) scale(1.05, 0.95);
+  }
+  70% {
+    transform: translateY(0) scale(0.96, 1.05);
+  }
+}
+
+@keyframes taku-alertar {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  20% {
+    transform: translateX(-5px) rotate(-3deg);
+  }
+  60% {
+    transform: translateX(5px) rotate(3deg);
+  }
+}
+
+.taku-burbuja {
+  animation: taku-aparecer 0.26s cubic-bezier(0.2, 1.2, 0.4, 1);
+  transform-origin: bottom left;
+}
+
+@keyframes taku-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/**
+ * Taku se aparta en dos situaciones, y las dos se resuelven con la misma
+ * regla para que ninguna le gane a la otra por especificidad:
+ *
+ * - mientras se scrollea hacia abajo, porque ahí la esquina es del contenido;
+ * - con un modal abierto, donde sería la única pieza fija flotando sobre el
+ *   fondo oscurecido.
+ */
+.taku-dock--oculto,
+body.modal-abierto .taku-dock {
+  opacity: 0;
+  transform: translateY(150%);
+  pointer-events: none;
+}
+
+/**
+ * Quien pidió menos movimiento recibe a Taku quieto, no a Taku ausente: el
+ * personaje sigue estando y sigue hablando, simplemente no se mueve.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .taku-idle,
+  .taku-saluda,
+  .taku-piensa,
+  .taku-festeja,
+  .taku-alerta,
+  .taku-burbuja {
+    animation: none;
+  }
+}

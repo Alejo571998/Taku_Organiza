@@ -31,9 +31,13 @@ export default function Modal({ title, children, onClose, accent, footer }: Prop
     // Sin esto el fondo scrollea detrás del modal en mobile.
     const overflowPrevio = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    // La clase la lee index.css para esconder a Taku: es la única pieza fija
+    // que quedaría flotando sobre el fondo oscurecido.
+    document.body.classList.add('modal-abierto')
     return () => {
       document.removeEventListener('keydown', alEscape)
       document.body.style.overflow = overflowPrevio
+      document.body.classList.remove('modal-abierto')
     }
   }, [onClose])
 

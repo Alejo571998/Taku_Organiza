@@ -7,9 +7,10 @@ import {
   useDeleteItemSeries
 } from '@/hooks/useItems'
 import { ETIQUETA_REPETICION } from '@/lib/queries/items'
-import { addMonthsISO } from '@/lib/dates'
+import { addMonthsISO, formatCorto } from '@/lib/dates'
 import { itemColor, pastel } from '@/lib/palette'
 import type { PaletteKey } from '@/lib/palette'
+import { useTaku } from '@/components/taku/TakuProvider'
 import ColorSwatches from '@/components/ui/ColorSwatches'
 import Modal from '@/components/ui/Modal'
 import type { TabWithFields } from '@/lib/queries/tabs'
@@ -37,6 +38,7 @@ export default function ItemEditorModal({
   const recurringMutation = useCreateRecurringItems()
   const rescheduleMutation = useRescheduleItemSeries()
   const deleteSeriesMutation = useDeleteItemSeries()
+  const taku = useTaku()
 
   const [tabId, setTabId] = useState(item?.tab_id ?? defaultTabId ?? tabs[0]?.id ?? '')
   const [title, setTitle] = useState(item?.title ?? '')
@@ -101,6 +103,16 @@ export default function ItemEditorModal({
       if (!item && repeticion) {
         if (!hasta) throw new Error('Elegí hasta cuándo se repite.')
         await recurringMutation.mutateAsync({ ...datos, recurrence: repeticion, until: hasta })
+        // El único guardado cuyo resultado no se ve: en el día queda una sola
+        // fila y el resto de las ocurrencias se reparte por el futuro. Taku
+        // confirma lo que la pantalla no puede mostrar.
+        taku.decir({
+          prioridad: 1,
+          estado: 'festejando',
+          texto: `Listo. "${datos.title}" se repite ${ETIQUETA_REPETICION[
+            repeticion
+          ].toLowerCase()} hasta el ${formatCorto(hasta)}.`
+        })
       } else {
         // Primero los datos, después la repetición: reagendar arranca desde la
         // fecha del ítem, y esa fecha puede haber cambiado recién.
