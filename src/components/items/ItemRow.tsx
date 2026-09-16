@@ -19,30 +19,39 @@ interface Props {
 /**
  * Tarjeta de tarea de las vistas donde SÍ se edita (Día y lista de pestaña).
  *
- * El color no tiñe la tarjeta entera: va en una barra lateral, el punto y el
- * ícono de nota. Pintar el fondo completo con doce pasteles distintos hace
- * que la lista se lea como un arcoíris y el texto pierda contraste; como
- * acento, el color identifica sin competir con el contenido.
+ * El color se derrama por la fila: arranca lleno en el borde izquierdo y se
+ * apaga hacia el centro. Antes era una barra de 4px y el color que la persona
+ * elegía para cada tarea casi no se veía.
+ *
+ * Por qué se apaga en vez de teñir la fila entera: el texto es casi blanco y
+ * necesita fondo oscuro debajo para mantener contraste, y con doce pasteles
+ * una lista teñida de punta a punta se lee como un arcoíris. Degradado, el
+ * color se ve de sobra y el texto sigue apoyado sobre el navy.
+ *
+ * Va en backgroundImage y no en background: background pisaría el color de
+ * .glass y la fila perdería su superficie de vidrio.
  */
 export default function ItemRow({ item, tab, onToggle, onEdit, trailing }: Props) {
   const c = itemColor(item.color, tab?.color)
   const detalle = itemSummary(item, tab)
 
+  // Una tarea tildada baja el color pero no lo pierde: sigue diciendo de qué
+  // pestaña era.
+  const intensidad = item.completed ? 0.3 : 1
+  const derrame = [
+    `${pastel(c, 0.95 * intensidad)} 0px`,
+    `${pastel(c, 0.95 * intensidad)} 6px`,
+    `${pastel(c, 0.42 * intensidad)} 6px`,
+    `${pastel(c, 0.17 * intensidad)} 42%`,
+    'transparent 80%'
+  ].join(', ')
+
   return (
     <SortableRow
       id={item.id}
       className="glass group relative flex flex-wrap items-start gap-2.5 overflow-hidden rounded-card px-3 py-3 transition-colors hover:bg-white/[0.07]"
+      style={{ backgroundImage: `linear-gradient(90deg, ${derrame})` }}
     >
-      {/* Barra de color a la izquierda: identifica sin teñir la tarjeta. */}
-      <span
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-1"
-        style={{
-          background: `linear-gradient(180deg, ${pastel(c, 0.95)}, ${pastel(c, 0.35)})`,
-          opacity: item.completed ? 0.35 : 1
-        }}
-      />
-
       <input
         type="checkbox"
         checked={item.completed}

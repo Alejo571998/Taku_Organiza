@@ -345,3 +345,27 @@ body.modal-abierto .taku-dock {
     animation: none;
   }
 }
+
+/**
+ * Zoom automático al enfocar un campo, en iPhone.
+ *
+ * Safari en iOS hace zoom sobre cualquier campo cuyo texto mida menos de
+ * 16px, y después NO vuelve solo: queda la pantalla agrandada hasta que la
+ * persona achica a dos dedos. Nuestros campos usan text-sm, que son 14px, así
+ * que pasaba en cada alta y cada edición.
+ *
+ * Por eso en pantallas táctiles los campos miden 16px justos, que es el
+ * umbral, y recién en escritorio vuelven a 14.
+ *
+ * La otra "solución" que circula es maximum-scale=1 en el viewport, y no se
+ * usa acá a propósito: eso no arregla el zoom, lo prohíbe, y de paso le saca
+ * el zoom a quien lo necesita para poder leer.
+ */
+@media (pointer: coarse), (max-width: 639px) {
+  .field,
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
