@@ -6,8 +6,55 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#16803C" />
-    <meta name="description" content="TAKU — Tu día, en orden." />
     <title>TAKU — Tu día, en orden.</title>
+    <meta
+      name="description"
+      content="Organizá tu día en pestañas propias: tareas con nota y color, repeticiones y comparativa mensual de gastos. Funciona en el celular y en la compu."
+    />
+
+    <!--
+      Vista previa al compartir el link (LinkedIn, WhatsApp, Facebook, Telegram).
+
+      Van escritas en el HTML y no las pone React al montar: los rastreadores
+      leen el HTML crudo y NO ejecutan JavaScript, así que nada de lo que la
+      app agregue en tiempo de ejecución les llega. Vercel reescribe todas las
+      rutas a este index.html, así que cualquier link de TAKU que se comparta
+      muestra esta misma vista previa.
+
+      Las URL tienen que ser absolutas, no /og.png: el rastreador no está
+      parado en el sitio cuando las resuelve. Si algún día cambia el dominio,
+      se cambian acá.
+    -->
+    <link rel="canonical" href="https://taku-ten.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TAKU" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:url" content="https://taku-ten.vercel.app/" />
+    <meta property="og:title" content="TAKU — Tu día, en orden." />
+    <meta
+      property="og:description"
+      content="Organizá tu día en pestañas propias: tareas con nota y color, repeticiones y comparativa mensual de gastos. Funciona en el celular y en la compu."
+    />
+    <!-- 1200x630 es lo que LinkedIn muestra grande; por debajo de 1200 de
+         ancho lo degrada a una miniatura al costado del título. Declarar las
+         medidas le evita bajar la imagen para decidir el formato. -->
+    <meta property="og:image" content="https://taku-ten.vercel.app/og.png" />
+    <meta property="og:image:secure_url" content="https://taku-ten.vercel.app/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Taku, la mascota de la app, sosteniendo una lista de tareas y un celular, junto al nombre TAKU y la frase Tu día, en orden."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TAKU — Tu día, en orden." />
+    <meta
+      name="twitter:description"
+      content="Organizá tu día en pestañas propias: tareas con nota y color, repeticiones y comparativa mensual de gastos."
+    />
+    <meta name="twitter:image" content="https://taku-ten.vercel.app/og.png" />
   </head>
   <body>
     <div id="root"></div>
