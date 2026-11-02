@@ -131,7 +131,7 @@ export default function TakuDock() {
     // en línea le ganaba a la regla que lo oculta cuando se abre un modal, y
     // Taku quedaba flotando sobre el fondo oscurecido.
     <div
-      className={`taku-dock pointer-events-none fixed left-3 z-40 flex flex-col items-start gap-2 transition-all duration-300 sm:left-4 ${
+      className={`taku-dock pointer-events-none fixed left-3 z-40 flex flex-col items-start gap-2 transition-all duration-300 sm:left-4 lg:left-[15.5rem] ${
         escondido ? 'taku-dock--oculto' : ''
       }`}
       style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4rem)' }}

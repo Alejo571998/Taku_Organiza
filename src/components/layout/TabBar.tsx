@@ -26,7 +26,7 @@ export default function TabBar() {
   return (
     <>
       <div
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-white/[0.07]"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-white/[0.07] lg:left-56"
         style={{
           background: 'rgb(5 8 18 / 0.72)',
           backdropFilter: 'blur(24px) saturate(140%)',

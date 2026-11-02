@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import ViewToggle from './ViewToggle'
 import TabBar from './TabBar'
 import ProfileMenu from './ProfileMenu'
+import Sidebar from './Sidebar'
 import { TakuProvider } from '@/components/taku/TakuProvider'
 import TakuDock from '@/components/taku/TakuDock'
 
@@ -13,11 +14,15 @@ import TakuDock from '@/components/taku/TakuDock'
 export default function AppLayout() {
   return (
     <TakuProvider>
+      <Sidebar />
+
       {/* pb-16 reserva el alto de la barra de pestañas, que es fixed y si no
-          taparía el final del contenido. */}
-      <div className="min-h-screen pb-16">
+          taparía el final del contenido. lg:pl-56 deja el ancho de la barra
+          lateral, que también es fixed. */}
+      <div className="min-h-screen pb-16 lg:pl-56">
         <header className="flex items-center gap-3 px-4 pt-4 sm:px-5 lg:px-8">
-          <p className="hidden shrink-0 text-lg font-bold leading-none tracking-tight sm:block">
+          {/* En escritorio el nombre ya está en la barra lateral. */}
+          <p className="hidden shrink-0 text-lg font-bold leading-none tracking-tight sm:block lg:hidden">
             TAKU
           </p>
           <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
