@@ -4,7 +4,9 @@ import {
   useMovimientos,
   useFinSettings,
   useMarcarPagado,
-  useSaveIngresoMensual
+  useSaveIngresoMensual,
+  useTarjetas,
+  usePagarResumen
 } from '@/hooks/useFinanzas'
 import {
   currentMonthKey,
@@ -24,24 +26,28 @@ import Chevron from '@/components/ui/Chevron'
 import TakuVacio from '@/components/taku/TakuVacio'
 import MovimientoEditorModal from '@/components/finanzas/MovimientoEditorModal'
 import CategoriasModal from '@/components/finanzas/CategoriasModal'
-import type { FinMovement } from '@/types/database.types'
+import TarjetaEditorModal from '@/components/finanzas/TarjetaEditorModal'
+import RepartirModal from '@/components/finanzas/RepartirModal'
+import type { FinCard, FinCategory, FinMovement } from '@/types/database.types'
 
-type Vista = 'mes' | 'anio'
+type Vista = 'mes' | 'tarjetas' | 'anio'
 
 export default function FinanzasView() {
   const [mes, setMes] = useState(currentMonthKey())
   const [vista, setVista] = useState<Vista>('mes')
   const [editando, setEditando] = useState<FinMovement | 'nuevo' | null>(null)
   const [verCategorias, setVerCategorias] = useState(false)
+  const [editandoTarjeta, setEditandoTarjeta] = useState<FinCard | 'nueva' | null>(null)
+  const [repartiendo, setRepartiendo] = useState<FinMovement | 'libre' | null>(null)
 
   const anio = Number(mes.slice(0, 4))
-  // En vista anual se pide el año entero; en mensual, solo el mes. Traer
-  // siempre el año completo haría que abrir Finanzas baje doce meses de
-  // movimientos para mostrar uno.
-  const from = vista === 'mes' ? monthStart(mes) : `${anio}-01-01`
-  const to = vista === 'mes' ? monthEnd(mes) : `${anio}-12-31`
+  // Solo la vista anual necesita los doce meses. Pedirlos siempre haría que
+  // abrir Finanzas baje un año de movimientos para mostrar uno solo.
+  const from = vista === 'anio' ? `${anio}-01-01` : monthStart(mes)
+  const to = vista === 'anio' ? `${anio}-12-31` : monthEnd(mes)
 
   const { data: categorias } = useCategorias()
+  const { data: tarjetas } = useTarjetas()
   const { data: movimientos, isLoading, error } = useMovimientos(from, to)
   const { data: settings } = useFinSettings()
   const marcarPagado = useMarcarPagado(from, to)
@@ -92,7 +98,7 @@ export default function FinanzasView() {
         )}
 
         <div className="glass ml-auto inline-flex rounded-pill p-1">
-          {(['mes', 'anio'] as Vista[]).map((v) => (
+          {(['mes', 'tarjetas', 'anio'] as Vista[]).map((v) => (
             <button
               key={v}
               onClick={() => setVista(v)}
@@ -102,11 +108,14 @@ export default function FinanzasView() {
                   : 'text-text-secondary hover:text-text-primary'
               }`}
             >
-              {v === 'mes' ? 'Mes' : 'Año'}
+              {v === 'mes' ? 'Mes' : v === 'tarjetas' ? 'Tarjetas' : 'Año'}
             </button>
           ))}
         </div>
 
+        <button onClick={() => setRepartiendo('libre')} className="btn-ghost shrink-0">
+          Repartir
+        </button>
         <button onClick={() => setEditando('nuevo')} className="btn-primary shrink-0">
           + Movimiento
         </button>
@@ -119,7 +128,7 @@ export default function FinanzasView() {
         </p>
       )}
 
-      {vista === 'mes' ? (
+      {vista === 'mes' && (
         <VistaMes
           resumen={resumen}
           disponible={disponible}
@@ -130,17 +139,33 @@ export default function FinanzasView() {
           onEditar={setEditando}
           onNuevo={() => setEditando('nuevo')}
           onCategorias={() => setVerCategorias(true)}
+          onRepartir={setRepartiendo}
           onPagar={(m, pagar) =>
             marcarPagado.mutate({ id: m.id, monto: pagar ? m.amount : 0 })
           }
         />
-      ) : (
+      )}
+
+      {vista === 'tarjetas' && (
+        <VistaTarjetas
+          tarjetas={tarjetas ?? []}
+          movimientos={movimientos ?? []}
+          desde={monthStart(mes)}
+          hasta={monthEnd(mes)}
+          onEditarTarjeta={setEditandoTarjeta}
+          onNuevaTarjeta={() => setEditandoTarjeta('nueva')}
+          onEditarMovimiento={setEditando}
+        />
+      )}
+
+      {vista === 'anio' && (
         <VistaAnual anual={anual} onIrAlMes={(m) => { setMes(m); setVista('mes') }} />
       )}
 
       {editando && categorias && (
         <MovimientoEditorModal
           categorias={categorias}
+          tarjetas={tarjetas ?? []}
           movimiento={editando === 'nuevo' ? undefined : editando}
           fechaPorDefecto={monthKey(hoy) === mes ? hoy : monthStart(mes)}
           onClose={() => setEditando(null)}
@@ -149,6 +174,26 @@ export default function FinanzasView() {
 
       {verCategorias && categorias && (
         <CategoriasModal categorias={categorias} onClose={() => setVerCategorias(false)} />
+      )}
+
+      {editandoTarjeta && (
+        <TarjetaEditorModal
+          tarjeta={editandoTarjeta === 'nueva' ? undefined : editandoTarjeta}
+          onClose={() => setEditandoTarjeta(null)}
+        />
+      )}
+
+      {repartiendo && (
+        <RepartirModal
+          ingreso={repartiendo === 'libre' ? undefined : repartiendo}
+          // Solo lo que todavía debe algo: ofrecer deudas saldadas sería
+          // pedirle que descarte a mano lo que ya pagó.
+          pendientes={(movimientos ?? []).filter(
+            (m) => m.kind === 'gasto' && m.paid_amount < m.amount
+          )}
+          categorias={categorias ?? []}
+          onClose={() => setRepartiendo(null)}
+        />
       )}
     </div>
   )
@@ -168,17 +213,19 @@ function VistaMes({
   onEditar,
   onNuevo,
   onCategorias,
+  onRepartir,
   onPagar
 }: {
   resumen: ReturnType<typeof resumenMes>
   disponible: number | null
   ingresoEsperado: number
   movimientos: FinMovement[]
-  categorias: { id: string; name: string; color: string | null }[]
+  categorias: FinCategory[]
   hoy: string
   onEditar: (m: FinMovement) => void
   onNuevo: () => void
   onCategorias: () => void
+  onRepartir: (m: FinMovement) => void
   onPagar: (m: FinMovement, pagar: boolean) => void
 }) {
   // Primero lo que vence, después el resto: es el orden en que se decide qué
@@ -273,6 +320,7 @@ function VistaMes({
               categorias={categorias}
               hoy={hoy}
               onEditar={() => onEditar(m)}
+              onRepartir={() => onRepartir(m)}
               onPagar={(pagar) => onPagar(m, pagar)}
             />
           ))}
@@ -287,12 +335,14 @@ function Fila({
   categorias,
   hoy,
   onEditar,
+  onRepartir,
   onPagar
 }: {
   m: FinMovement
-  categorias: { id: string; name: string; color: string | null }[]
+  categorias: FinCategory[]
   hoy: string
   onEditar: () => void
+  onRepartir: () => void
   onPagar: (pagar: boolean) => void
 }) {
   const cat = categorias.find((c) => c.id === m.category_id)
@@ -351,6 +401,18 @@ function Fila({
           )}
         </span>
       </button>
+
+      {/* Repartir sale del ingreso porque ese es el momento en que se decide:
+          entró plata, ahora a qué va. */}
+      {m.kind === 'ingreso' && (
+        <button
+          onClick={onRepartir}
+          className="shrink-0 rounded-pill bg-accent/15 px-2.5 py-1 text-xs font-medium text-accent-text transition-colors hover:bg-accent/25"
+          title="Repartir esta plata entre lo que debés"
+        >
+          Repartir
+        </button>
+      )}
 
       <span
         className={`shrink-0 text-sm font-semibold ${
@@ -528,6 +590,170 @@ function IngresoMensual({ actual }: { actual: number }) {
       <button onClick={() => setEditando(false)} className="btn-ghost">
         Cancelar
       </button>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------
+// Tarjetas
+// ------------------------------------------------------------
+
+/**
+ * El resumen de una tarjeta en un mes es la SUMA de sus consumos de ese mes,
+ * calculada acá. No se guarda en ningún lado a propósito: tener el mismo
+ * número en dos lugares termina siempre con uno de los dos viejo.
+ *
+ * Por eso tampoco hay un gasto aparte llamado "Tarjeta Visa": sería contar
+ * dos veces lo mismo, una por los consumos y otra por el resumen. Lo que sí
+ * se puede es saldar todo el resumen de una, que es como se paga de verdad.
+ */
+function VistaTarjetas({
+  tarjetas,
+  movimientos,
+  desde,
+  hasta,
+  onEditarTarjeta,
+  onNuevaTarjeta,
+  onEditarMovimiento
+}: {
+  tarjetas: FinCard[]
+  movimientos: FinMovement[]
+  desde: string
+  hasta: string
+  onEditarTarjeta: (t: FinCard) => void
+  onNuevaTarjeta: () => void
+  onEditarMovimiento: (m: FinMovement) => void
+}) {
+  const pagarResumen = usePagarResumen()
+  const [abierta, setAbierta] = useState<string | null>(null)
+
+  const visibles = tarjetas.filter((t) => t.active)
+
+  if (visibles.length === 0) {
+    return (
+      <TakuVacio
+        titulo="Todavía no cargaste ninguna tarjeta"
+        detalle="Una tarjeta junta sus consumos y te arma el resumen del mes sola. Las cuotas, los intereses y el IVA son consumos más: los cargás y se suman."
+        accion={
+          <button onClick={onNuevaTarjeta} className="btn-primary">
+            Crear la primera
+          </button>
+        }
+      />
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {visibles.map((t) => {
+        const consumos = movimientos.filter((m) => m.card_id === t.id && m.kind === 'gasto')
+        const total = consumos.reduce((acc, m) => acc + Math.round(m.amount * 100), 0) / 100
+        const pagado = consumos.reduce((acc, m) => acc + Math.round(m.paid_amount * 100), 0) / 100
+        const saldado = consumos.length > 0 && pagado >= total
+        const c = safeColor(t.color)
+        const expandida = abierta === t.id
+
+        return (
+          <div
+            key={t.id}
+            className="glass overflow-hidden rounded-card"
+            style={{
+              backgroundImage: `linear-gradient(90deg, ${pastel(c, 0.9)} 0px, ${pastel(c, 0.9)} 6px, ${pastel(c, 0.16)} 6px, transparent 55%)`
+            }}
+          >
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3.5">
+              <button
+                onClick={() => setAbierta(expandida ? null : t.id)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  {t.name}
+                  {saldado && (
+                    <span
+                      className="rounded-pill px-2 py-0.5 text-[10px] font-medium"
+                      style={{ background: pastel('mint', 0.2), color: pastel('mint', 1) }}
+                    >
+                      saldada
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-text-muted">
+                  {consumos.length === 0
+                    ? 'Sin consumos este mes'
+                    : `${consumos.length} ${consumos.length === 1 ? 'consumo' : 'consumos'}`}
+                  {t.due_day ? ` · vence el ${t.due_day}` : ''}
+                  {pagado > 0 && !saldado ? ` · pagado ${formatARS(pagado)}` : ''}
+                </p>
+              </button>
+
+              <span className="text-lg font-bold" style={{ color: pastel(c, 1) }}>
+                {formatARS(total)}
+              </span>
+
+              {consumos.length > 0 && (
+                <button
+                  onClick={() =>
+                    pagarResumen.mutate({
+                      cardId: t.id,
+                      desde,
+                      hasta,
+                      pagar: !saldado
+                    })
+                  }
+                  disabled={pagarResumen.isPending}
+                  className="btn-ghost shrink-0 px-3 py-1.5 text-xs"
+                >
+                  {saldado ? 'Desmarcar' : 'Pagar resumen'}
+                </button>
+              )}
+
+              <button
+                onClick={() => onEditarTarjeta(t)}
+                className="shrink-0 text-xs text-text-muted underline transition-colors hover:text-text-primary"
+              >
+                Editar
+              </button>
+            </div>
+
+            {expandida && consumos.length > 0 && (
+              <div className="border-t border-white/[0.07] bg-black/15 px-4 py-2">
+                {consumos.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => onEditarMovimiento(m)}
+                    className="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-white/5"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      {m.description}
+                      {m.installments && (
+                        <span className="ml-1.5 text-xs text-text-muted">
+                          {m.installment}/{m.installments}
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`shrink-0 text-sm ${
+                        m.paid_amount >= m.amount ? 'text-text-muted line-through' : ''
+                      }`}
+                    >
+                      {formatARS(m.amount)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      <button onClick={onNuevaTarjeta} className="btn-ghost self-start">
+        + Tarjeta
+      </button>
+
+      <p className="text-xs text-text-muted">
+        El resumen es la suma de los consumos del mes. No se carga aparte: sería contar dos
+        veces lo mismo.
+      </p>
     </div>
   )
 }

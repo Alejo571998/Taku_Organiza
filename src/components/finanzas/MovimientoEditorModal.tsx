@@ -9,7 +9,13 @@ import {
   useDeleteMovimiento,
   useDeleteSerie
 } from '@/hooks/useFinanzas'
-import type { FinCategory, FinMovement, MovementKind, PaymentMethod } from '@/types/database.types'
+import type {
+  FinCard,
+  FinCategory,
+  FinMovement,
+  MovementKind,
+  PaymentMethod
+} from '@/types/database.types'
 
 const MEDIOS: { valor: PaymentMethod; etiqueta: string }[] = [
   { valor: 'efectivo', etiqueta: 'Efectivo' },
@@ -23,6 +29,7 @@ type Modo = 'simple' | 'fijo' | 'cuotas'
 
 interface Props {
   categorias: FinCategory[]
+  tarjetas: FinCard[]
   movimiento?: FinMovement
   fechaPorDefecto: string
   onClose: () => void
@@ -42,6 +49,7 @@ interface Props {
  */
 export default function MovimientoEditorModal({
   categorias,
+  tarjetas,
   movimiento,
   fechaPorDefecto,
   onClose
@@ -60,6 +68,7 @@ export default function MovimientoEditorModal({
   const [dueDate, setDueDate] = useState(movimiento?.due_date ?? '')
   const [categoryId, setCategoryId] = useState(movimiento?.category_id ?? '')
   const [method, setMethod] = useState<PaymentMethod | ''>(movimiento?.method ?? '')
+  const [cardId, setCardId] = useState(movimiento?.card_id ?? '')
   const [note, setNote] = useState(movimiento?.note ?? '')
   const [modo, setModo] = useState<Modo>('simple')
   const [meses, setMeses] = useState(12)
@@ -94,6 +103,7 @@ export default function MovimientoEditorModal({
       date,
       dueDate: dueDate || null,
       categoryId: categoryId || null,
+      cardId: cardId || null,
       method: (method || null) as PaymentMethod | null,
       note: note.trim() || null
     }
@@ -258,7 +268,13 @@ export default function MovimientoEditorModal({
           </label>
           <select
             value={method}
-            onChange={(e) => setMethod(e.target.value as PaymentMethod | '')}
+            onChange={(e) => {
+              const v = e.target.value as PaymentMethod | ''
+              setMethod(v)
+              // Si deja de ser con tarjeta, el consumo no puede quedar colgado
+              // de una: aparecería en el resumen de algo que no se pagó así.
+              if (v !== 'credito') setCardId('')
+            }}
             className="field"
           >
             <option value="">Sin especificar</option>
@@ -270,6 +286,37 @@ export default function MovimientoEditorModal({
           </select>
         </div>
       </div>
+
+      {/* La tarjeta aparece solo si hay alguna cargada: el selector vacío en
+          cada alta sería una pregunta que la mayoría no tiene que contestar. */}
+      {kind === 'gasto' && tarjetas.length > 0 && (
+        <div>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-text-muted">
+            Tarjeta
+          </label>
+          <select
+            value={cardId}
+            onChange={(e) => {
+              setCardId(e.target.value)
+              // Elegir tarjeta ya dice cómo se pagó.
+              if (e.target.value) setMethod('credito')
+            }}
+            className="field"
+          >
+            <option value="">No es de tarjeta</option>
+            {tarjetas
+              .filter((t) => t.active || t.id === cardId)
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+          </select>
+          <p className="mt-1 text-xs text-text-muted">
+            El consumo suma al resumen de esa tarjeta en el mes de la fecha.
+          </p>
+        </div>
+      )}
 
       {kind === 'gasto' && (
         <div className="grid grid-cols-2 gap-3">

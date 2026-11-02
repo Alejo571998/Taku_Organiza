@@ -10,7 +10,12 @@ import {
   setPaid,
   crearSerie,
   fetchSettings,
-  saveMonthlyIncome
+  saveMonthlyIncome,
+  fetchCards,
+  saveCard,
+  deleteCard,
+  pagarResumenTarjeta,
+  repartirIngreso
 } from '@/lib/queries/finanzas'
 import type { FinMovement } from '@/types/database.types'
 
@@ -135,5 +140,65 @@ export function useSaveIngresoMensual() {
   return useMutation({
     mutationFn: saveMonthlyIncome,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: settingsKey })
+  })
+}
+
+// ------------------------------------------------------------
+// Tarjetas y reparto
+// ------------------------------------------------------------
+
+export const tarjetasKey = ['fin', 'tarjetas'] as const
+
+export function useTarjetas() {
+  return useQuery({ queryKey: tarjetasKey, queryFn: fetchCards })
+}
+
+export function useSaveTarjeta() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: saveCard,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tarjetasKey })
+      invalidarMovimientos(queryClient)
+    }
+  })
+}
+
+export function useDeleteTarjeta() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteCard,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tarjetasKey })
+      // Los consumos quedaron sin tarjeta: hay que releerlos o seguirían
+      // agrupados bajo una tarjeta que ya no existe.
+      invalidarMovimientos(queryClient)
+    }
+  })
+}
+
+export function usePagarResumen() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      cardId,
+      desde,
+      hasta,
+      pagar
+    }: {
+      cardId: string
+      desde: string
+      hasta: string
+      pagar: boolean
+    }) => pagarResumenTarjeta(cardId, desde, hasta, pagar),
+    onSuccess: () => invalidarMovimientos(queryClient)
+  })
+}
+
+export function useRepartirIngreso() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: repartirIngreso,
+    onSuccess: () => invalidarMovimientos(queryClient)
   })
 }

@@ -92,6 +92,8 @@ export interface FinMovement {
   installment: number | null
   installments: number | null
   recurring: boolean
+  /** Tarjeta a la que pertenece el consumo. null = no es de tarjeta. */
+  card_id: string | null
 }
 
 export interface FinSettings {
@@ -120,4 +122,20 @@ export interface HabitLog {
   habit_id: string
   user_id: string
   date: string
+}
+
+/**
+ * Una tarjeta. Su resumen mensual NO se guarda: es la suma de sus consumos
+ * de ese mes, calculada al leer. Guardarlo sería tener el mismo número en
+ * dos lugares, y tarde o temprano uno queda viejo.
+ */
+export interface FinCard {
+  id: string
+  user_id: string
+  name: string
+  color: CategoryColor | null
+  closing_day: number | null
+  due_day: number | null
+  active: boolean
+  sort_order: number
 }

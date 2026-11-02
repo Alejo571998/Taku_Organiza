@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type {
+  FinCard,
   FinCategory,
   FinMovement,
   FinSettings,
@@ -13,7 +14,7 @@ import type {
  * el rastro y devuelve un error de tipos en vez de la fila.
  */
 const MOVEMENT_SELECT =
-  'id, user_id, category_id, kind, description, amount, paid_amount, date, due_date, method, note, series_id, installment, installments, recurring'
+  'id, user_id, category_id, card_id, kind, description, amount, paid_amount, date, due_date, method, note, series_id, installment, installments, recurring'
 
 const CATEGORY_SELECT = 'id, user_id, name, kind, color, sort_order'
 
@@ -84,6 +85,7 @@ export interface SaveMovementInput {
   categoryId: string | null
   method: PaymentMethod | null
   note: string | null
+  cardId: string | null
 }
 
 export async function saveMovement(input: SaveMovementInput): Promise<void> {
@@ -95,6 +97,7 @@ export async function saveMovement(input: SaveMovementInput): Promise<void> {
     date: input.date,
     due_date: input.dueDate,
     category_id: input.categoryId,
+    card_id: input.cardId,
     method: input.method,
     note: input.note
   }
@@ -153,7 +156,8 @@ export async function crearSerie(input: SerieInput): Promise<string> {
     p_method: input.method,
     p_note: input.note,
     p_due_date: input.dueDate,
-    p_es_fijo: input.esFijo
+    p_es_fijo: input.esFijo,
+    p_card_id: input.cardId
   })
   if (error) throw error
   return data as string
@@ -185,4 +189,95 @@ export async function saveMonthlyIncome(monto: number): Promise<void> {
     .from('fin_settings')
     .upsert({ user_id: userId, monthly_income: monto, updated_at: new Date().toISOString() })
   if (error) throw error
+}
+
+// ------------------------------------------------------------
+// Tarjetas
+// ------------------------------------------------------------
+
+const CARD_SELECT = 'id, user_id, name, color, closing_day, due_day, active, sort_order'
+
+export async function fetchCards(): Promise<FinCard[]> {
+  const { data, error } = await supabase
+    .from('fin_cards')
+    .select(CARD_SELECT)
+    .order('sort_order')
+    .order('name')
+  if (error) throw error
+  return (data ?? []) as FinCard[]
+}
+
+export interface SaveCardInput {
+  id?: string
+  name: string
+  color: string | null
+  closingDay: number | null
+  dueDay: number | null
+  active: boolean
+}
+
+export async function saveCard(input: SaveCardInput): Promise<void> {
+  const fila = {
+    name: input.name,
+    color: input.color,
+    closing_day: input.closingDay,
+    due_day: input.dueDay,
+    active: input.active
+  }
+  const { error } = input.id
+    ? await supabase.from('fin_cards').update(fila).eq('id', input.id)
+    : await supabase.from('fin_cards').insert(fila)
+  if (error) throw error
+}
+
+/** Los consumos no se borran: quedan sin tarjeta y siguen contando en el mes. */
+export async function deleteCard(id: string): Promise<void> {
+  const { error } = await supabase.from('fin_cards').delete().eq('id', id)
+  if (error) throw error
+}
+
+/**
+ * Saldar (o desandar) el resumen de una tarjeta de un mes.
+ * La tarjeta se paga de una, no consumo por consumo.
+ */
+export async function pagarResumenTarjeta(
+  cardId: string,
+  desde: string,
+  hasta: string,
+  pagar: boolean
+): Promise<number> {
+  const { data, error } = await supabase.rpc('pagar_resumen_tarjeta', {
+    p_card_id: cardId,
+    p_desde: desde,
+    p_hasta: hasta,
+    p_pagar: pagar
+  })
+  if (error) throw error
+  return (data as number) ?? 0
+}
+
+// ------------------------------------------------------------
+// Repartir un ingreso
+// ------------------------------------------------------------
+
+export interface Asignacion {
+  id: string
+  monto: number
+}
+
+/**
+ * Aplica el reparto en una sola transacción. Todo o nada: un reparto a
+ * medias deja el balance mintiendo, y es justo la cuenta que la persona
+ * vino a delegar.
+ *
+ * Cada monto se SUMA a lo ya pagado, no lo reemplaza: una deuda puede
+ * recibir plata de dos ingresos distintos, que es como se paga la luz
+ * cuando no alcanza de una.
+ */
+export async function repartirIngreso(asignaciones: Asignacion[]): Promise<number> {
+  const { data, error } = await supabase.rpc('repartir_ingreso', {
+    p_asignaciones: asignaciones
+  })
+  if (error) throw error
+  return (data as number) ?? 0
 }
