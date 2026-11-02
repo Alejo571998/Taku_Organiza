@@ -28,6 +28,8 @@ import MovimientoEditorModal from '@/components/finanzas/MovimientoEditorModal'
 import CategoriasModal from '@/components/finanzas/CategoriasModal'
 import TarjetaEditorModal from '@/components/finanzas/TarjetaEditorModal'
 import RepartirModal from '@/components/finanzas/RepartirModal'
+import ImportarPdfModal from '@/components/finanzas/ImportarPdfModal'
+import { useTaku } from '@/components/taku/TakuProvider'
 import type { FinCard, FinCategory, FinMovement } from '@/types/database.types'
 
 type Vista = 'mes' | 'tarjetas' | 'anio'
@@ -39,6 +41,8 @@ export default function FinanzasView() {
   const [verCategorias, setVerCategorias] = useState(false)
   const [editandoTarjeta, setEditandoTarjeta] = useState<FinCard | 'nueva' | null>(null)
   const [repartiendo, setRepartiendo] = useState<FinMovement | 'libre' | null>(null)
+  const [importando, setImportando] = useState(false)
+  const taku = useTaku()
 
   const anio = Number(mes.slice(0, 4))
   // Solo la vista anual necesita los doce meses. Pedirlos siempre haría que
@@ -113,6 +117,9 @@ export default function FinanzasView() {
           ))}
         </div>
 
+        <button onClick={() => setImportando(true)} className="btn-ghost shrink-0">
+          Importar PDF
+        </button>
         <button onClick={() => setRepartiendo('libre')} className="btn-ghost shrink-0">
           Repartir
         </button>
@@ -180,6 +187,22 @@ export default function FinanzasView() {
         <TarjetaEditorModal
           tarjeta={editandoTarjeta === 'nueva' ? undefined : editandoTarjeta}
           onClose={() => setEditandoTarjeta(null)}
+        />
+      )}
+
+      {importando && (
+        <ImportarPdfModal
+          categorias={categorias ?? []}
+          tarjetas={tarjetas ?? []}
+          existentes={movimientos ?? []}
+          onClose={() => setImportando(false)}
+          onListo={(cuantos) =>
+            taku.decir({
+              prioridad: 1,
+              estado: 'festejando',
+              texto: `Listo, importé ${cuantos} ${cuantos === 1 ? 'movimiento' : 'movimientos'} del resumen.`
+            })
+          }
         />
       )}
 

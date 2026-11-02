@@ -281,3 +281,49 @@ export async function repartirIngreso(asignaciones: Asignacion[]): Promise<numbe
   if (error) throw error
   return (data as number) ?? 0
 }
+
+// ------------------------------------------------------------
+// Alta en lote (importación)
+// ------------------------------------------------------------
+
+export interface MovimientoEnLote {
+  kind: MovementKind
+  description: string
+  amount: number
+  date: string
+  categoryId: string | null
+  cardId: string | null
+  method: PaymentMethod | null
+  installment: number | null
+  installments: number | null
+}
+
+/**
+ * Inserta muchos movimientos de una.
+ *
+ * Un solo insert con todas las filas y no uno por fila: PostgREST lo resuelve
+ * en una transacción, así que o entran todas o no entra ninguna. Importar
+ * ochenta movimientos y que fallen los últimos veinte dejaría medio resumen
+ * cargado, sin forma de saber dónde se cortó.
+ *
+ * El user_id lo pone el default de la tabla.
+ */
+export async function insertarMovimientos(filas: MovimientoEnLote[]): Promise<number> {
+  if (filas.length === 0) return 0
+
+  const { error } = await supabase.from('fin_movements').insert(
+    filas.map((f) => ({
+      kind: f.kind,
+      description: f.description,
+      amount: f.amount,
+      date: f.date,
+      category_id: f.categoryId,
+      card_id: f.cardId,
+      method: f.method,
+      installment: f.installment,
+      installments: f.installments
+    }))
+  )
+  if (error) throw error
+  return filas.length
+}

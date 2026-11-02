@@ -15,7 +15,8 @@ import {
   saveCard,
   deleteCard,
   pagarResumenTarjeta,
-  repartirIngreso
+  repartirIngreso,
+  insertarMovimientos
 } from '@/lib/queries/finanzas'
 import type { FinMovement } from '@/types/database.types'
 
@@ -199,6 +200,14 @@ export function useRepartirIngreso() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: repartirIngreso,
+    onSuccess: () => invalidarMovimientos(queryClient)
+  })
+}
+
+export function useImportarMovimientos() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: insertarMovimientos,
     onSuccess: () => invalidarMovimientos(queryClient)
   })
 }

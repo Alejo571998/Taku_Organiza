@@ -9,6 +9,19 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'taku.png', 'taku-384.png'],
+      workbox: {
+        /**
+         * pdf.js queda FUERA del precache.
+         *
+         * Pesa más que toda la app junta y solo lo necesita quien importa un
+         * resumen. Precachearlo haría que cada instalación de la PWA baje
+         * medio mega de una librería que la mayoría no va a usar nunca.
+         *
+         * Afuera del precache no desaparece: se baja por red la primera vez
+         * que alguien abre la importación, que es justo cuando hace falta.
+         */
+        globIgnores: ['**/pdf.min-*.js', '**/pdf.worker.min-*.mjs', '**/pdf.worker.min-*.js']
+      },
       manifest: {
         name: 'TAKU — Tu día, en orden.',
         short_name: 'TAKU',
