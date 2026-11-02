@@ -16,7 +16,7 @@ create extension if not exists "pgcrypto";
 -- ------------------------------------------------------------
 create table public.tabs (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name text not null,
   -- Paleta compartida con los ítems. Se guarda la CLAVE semántica y no el
   -- hex: así se puede recalibrar cualquier tono sin migrar datos.
@@ -69,7 +69,7 @@ alter table public.tabs
 -- ------------------------------------------------------------
 create table public.items (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   tab_id uuid not null,
   title text not null,
   date date not null,
@@ -766,7 +766,7 @@ grant execute on function public.paso_repeticion(text) to authenticated;
 -- ------------------------------------------------------------
 create table if not exists public.fin_categories (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name text not null,
   kind text not null check (kind in ('gasto', 'ingreso')),
   color text check (color is null or color in (
@@ -787,7 +787,7 @@ alter table public.fin_categories add constraint fin_categories_id_user_id_key u
 -- ------------------------------------------------------------
 create table if not exists public.fin_movements (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   category_id uuid,
   kind text not null check (kind in ('gasto', 'ingreso')),
   description text not null,
@@ -851,7 +851,7 @@ create index if not exists fin_movements_category_user_idx
 -- verdad. Comparar las dos cosas es justo la gracia.
 -- ------------------------------------------------------------
 create table if not exists public.fin_settings (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  user_id uuid primary key default auth.uid() references auth.users(id) on delete cascade,
   monthly_income numeric(14, 2) not null default 0 check (monthly_income >= 0),
   updated_at timestamptz not null default now()
 );
@@ -861,7 +861,7 @@ create table if not exists public.fin_settings (
 -- ------------------------------------------------------------
 create table if not exists public.habits (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name text not null,
   color text check (color is null or color in (
     'mint','sage','sky','aqua','lavender','lilac',
@@ -883,7 +883,7 @@ alter table public.habits add constraint habits_id_user_id_key unique (id, user_
 -- por hábito sino las que efectivamente marcó.
 create table if not exists public.habit_logs (
   habit_id uuid not null,
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   date date not null,
   created_at timestamptz not null default now(),
   primary key (habit_id, date),
@@ -1037,7 +1037,7 @@ grant execute on function public.crear_movimientos_en_serie(
 -- ------------------------------------------------------------
 create table if not exists public.fin_cards (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name text not null,
   color text check (color is null or color in (
     'mint','sage','sky','aqua','lavender','lilac',
