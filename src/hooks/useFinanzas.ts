@@ -16,7 +16,8 @@ import {
   deleteCard,
   pagarResumenTarjeta,
   repartirIngreso,
-  insertarMovimientos
+  insertarMovimientos,
+  fetchDeudasAnteriores
 } from '@/lib/queries/finanzas'
 import type { FinMovement } from '@/types/database.types'
 
@@ -48,6 +49,7 @@ export function useFinSettings() {
  * tareas.
  */
 function invalidarMovimientos(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['fin', 'deudas'] })
   return queryClient.invalidateQueries({ queryKey: ['fin', 'movimientos'] })
 }
 
@@ -209,5 +211,14 @@ export function useImportarMovimientos() {
   return useMutation({
     mutationFn: insertarMovimientos,
     onSuccess: () => invalidarMovimientos(queryClient)
+  })
+}
+
+export const deudasKey = (antesDe: string) => ['fin', 'deudas', antesDe] as const
+
+export function useDeudasAnteriores(antesDe: string) {
+  return useQuery({
+    queryKey: deudasKey(antesDe),
+    queryFn: () => fetchDeudasAnteriores(antesDe)
   })
 }

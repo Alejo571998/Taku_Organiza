@@ -6,7 +6,8 @@ import {
   useMarcarPagado,
   useSaveIngresoMensual,
   useTarjetas,
-  usePagarResumen
+  usePagarResumen,
+  useDeudasAnteriores
 } from '@/hooks/useFinanzas'
 import {
   currentMonthKey,
@@ -29,6 +30,7 @@ import CategoriasModal from '@/components/finanzas/CategoriasModal'
 import TarjetaEditorModal from '@/components/finanzas/TarjetaEditorModal'
 import RepartirModal from '@/components/finanzas/RepartirModal'
 import ImportarPdfModal from '@/components/finanzas/ImportarPdfModal'
+import HojaDelMes from '@/components/finanzas/HojaDelMes'
 import { useTaku } from '@/components/taku/TakuProvider'
 import type { FinCard, FinCategory, FinMovement } from '@/types/database.types'
 
@@ -54,6 +56,10 @@ export default function FinanzasView() {
   const { data: tarjetas } = useTarjetas()
   const { data: movimientos, isLoading, error } = useMovimientos(from, to)
   const { data: settings } = useFinSettings()
+  // Lo que quedó debiendo de antes. Se pide aparte del mes: una deuda de
+  // septiembre no está en el rango de noviembre y desaparecería de la vista
+  // justo cuando más importa acordarse de ella.
+  const { data: deudas } = useDeudasAnteriores(monthStart(mes))
   const marcarPagado = useMarcarPagado(from, to)
 
   const hoy = todayISO()
@@ -141,6 +147,7 @@ export default function FinanzasView() {
           disponible={disponible}
           ingresoEsperado={ingresoEsperado}
           movimientos={movimientos ?? []}
+          deudas={deudas ?? []}
           categorias={categorias ?? []}
           hoy={hoy}
           onEditar={setEditando}
@@ -231,6 +238,7 @@ function VistaMes({
   disponible,
   ingresoEsperado,
   movimientos,
+  deudas,
   categorias,
   hoy,
   onEditar,
@@ -243,6 +251,7 @@ function VistaMes({
   disponible: number | null
   ingresoEsperado: number
   movimientos: FinMovement[]
+  deudas: FinMovement[]
   categorias: FinCategory[]
   hoy: string
   onEditar: (m: FinMovement) => void
@@ -251,14 +260,9 @@ function VistaMes({
   onRepartir: (m: FinMovement) => void
   onPagar: (m: FinMovement, pagar: boolean) => void
 }) {
-  // Primero lo que vence, después el resto: es el orden en que se decide qué
-  // pagar. Un movimiento sin vencimiento no compite por urgencia.
-  const ordenados = [...movimientos].sort((a, b) => {
-    const va = a.due_date ?? '9999-12-31'
-    const vb = b.due_date ?? '9999-12-31'
-    if (va !== vb) return va.localeCompare(vb)
-    return a.date.localeCompare(b.date)
-  })
+  const ingresos = movimientos.filter((m) => m.kind === 'ingreso')
+  const arrastre =
+    deudas.reduce((a, m) => a + Math.round((m.amount - m.paid_amount) * 100), 0) / 100
 
   return (
     <div className="flex flex-col gap-4">
@@ -280,13 +284,66 @@ function VistaMes({
         <Tarjeta
           titulo="Pendiente"
           valor={formatARS(resumen.pendiente)}
-          tono={resumen.vencido > 0 ? 'coral' : 'butter'}
+          tono={resumen.vencido > 0 || arrastre > 0 ? 'coral' : 'butter'}
         >
-          {resumen.vencido > 0 ? `${formatARS(resumen.vencido)} vencido` : 'Nada vencido'}
+          {/* El arrastre cuenta: decir "nada vencido" mirando solo el mes,
+              con deuda de julio sin pagar, es mentir con una verdad parcial. */}
+          {arrastre > 0
+            ? `+ ${formatARS(arrastre)} de antes`
+            : resumen.vencido > 0
+              ? `${formatARS(resumen.vencido)} vencido`
+              : 'Nada vencido'}
         </Tarjeta>
       </div>
 
       <IngresoMensual actual={ingresoEsperado} />
+
+      {movimientos.length === 0 && deudas.length === 0 ? (
+        <TakuVacio
+          titulo="Todavía no hay movimientos este mes"
+          detalle="Cargá un gasto o un ingreso. Si es algo que pagás todos los meses, marcalo como fijo y se repite solo."
+          accion={
+            <button onClick={onNuevo} className="btn-primary">
+              Cargar el primero
+            </button>
+          }
+        />
+      ) : (
+        <>
+          {/* La hoja del mes: el bloque principal. Está copiada de cómo lo
+              lleva a mano la usuaria, que es más legible que una lista sola. */}
+          <HojaDelMes
+            movimientos={movimientos}
+            deudas={deudas}
+            categorias={categorias}
+            hoy={hoy}
+            onEditar={onEditar}
+            onPagar={onPagar}
+          />
+
+          {/* Los ingresos van aparte: la hoja es de gastos, y mezclarlos
+              arruinaría la columna de montos que es lo que la hace legible.
+              Además es desde acá que se reparte la plata que entró. */}
+          {ingresos.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.12em] text-text-muted">
+                Ingresos del mes
+              </h2>
+              {ingresos.map((m) => (
+                <Fila
+                  key={m.id}
+                  m={m}
+                  categorias={categorias}
+                  hoy={hoy}
+                  onEditar={() => onEditar(m)}
+                  onRepartir={() => onRepartir(m)}
+                  onPagar={(pagar) => onPagar(m, pagar)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
 
       {resumen.porCategoria.length > 0 && (
         <div className="glass rounded-card px-4 py-4">
@@ -324,31 +381,6 @@ function VistaMes({
         </div>
       )}
 
-      {movimientos.length === 0 ? (
-        <TakuVacio
-          titulo="Todavía no hay movimientos este mes"
-          detalle="Cargá un gasto o un ingreso. Si es algo que pagás todos los meses, marcalo como fijo y se repite solo."
-          accion={
-            <button onClick={onNuevo} className="btn-primary">
-              Cargar el primero
-            </button>
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {ordenados.map((m) => (
-            <Fila
-              key={m.id}
-              m={m}
-              categorias={categorias}
-              hoy={hoy}
-              onEditar={() => onEditar(m)}
-              onRepartir={() => onRepartir(m)}
-              onPagar={(pagar) => onPagar(m, pagar)}
-            />
-          ))}
-        </div>
-      )}
     </div>
   )
 }

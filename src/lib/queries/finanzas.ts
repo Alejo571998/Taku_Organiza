@@ -327,3 +327,38 @@ export async function insertarMovimientos(filas: MovimientoEnLote[]): Promise<nu
   if (error) throw error
   return filas.length
 }
+
+/**
+ * Lo que quedó debiendo de meses anteriores.
+ *
+ * Es el bloque de abajo de la hoja de papel: "OCT - EPE", "SEP - EPE". Una
+ * deuda de septiembre sigue siendo deuda en noviembre, y si la vista del mes
+ * solo mira el mes, esa plata desaparece de la pantalla justo cuando más
+ * importa acordarse de ella.
+ *
+ * El filtro de "todavía debe" se hace acá y no en la consulta porque PostgREST
+ * no sabe comparar dos columnas entre sí (paid_amount < amount); solo compara
+ * contra valores fijos.
+ */
+export async function fetchDeudasAnteriores(
+  antesDe: string,
+  mesesAtras = 18
+): Promise<FinMovement[]> {
+  const desde = new Date(`${antesDe}T00:00:00`)
+  desde.setMonth(desde.getMonth() - mesesAtras)
+  const desdeISO = desde.toISOString().slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('fin_movements')
+    .select(MOVEMENT_SELECT)
+    .eq('kind', 'gasto')
+    .gte('date', desdeISO)
+    .lt('date', antesDe)
+    .order('date')
+  if (error) throw error
+
+  // Un monto en cero es un concepto anotado sin importe todavía ("INTERNET",
+  // esperando la factura). No es una deuda: es un recordatorio, y arrastrarlo
+  // como deuda inflaría el total con un número que nadie puso.
+  return ((data ?? []) as FinMovement[]).filter((m) => m.amount > 0 && m.paid_amount < m.amount)
+}

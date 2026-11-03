@@ -90,7 +90,11 @@ export default function MovimientoEditorModal({
       setError('Ponele un nombre al movimiento.')
       return
     }
-    if (monto === null) {
+    // Vacío NO es un error: en la hoja de papel hay renglones escritos sin
+    // importe, esperando que llegue la factura. Se guarda en cero, queda
+    // como "a confirmar" en la lista y no entra en los totales.
+    const montoFinal = montoTexto.trim() === '' ? 0 : monto
+    if (montoFinal === null) {
       setError('El monto no se entiende. Podés escribirlo como 1.234,56 o 1234.56')
       return
     }
@@ -99,7 +103,7 @@ export default function MovimientoEditorModal({
     const base = {
       kind,
       description: description.trim(),
-      amount: monto,
+      amount: montoFinal,
       date,
       dueDate: dueDate || null,
       categoryId: categoryId || null,
@@ -118,7 +122,7 @@ export default function MovimientoEditorModal({
           id: movimiento?.id,
           // Un ingreso ya está cobrado cuando se anota: no tiene sentido
           // pedirle a alguien que marque cuánto cobró de lo que cobró.
-          paidAmount: kind === 'ingreso' ? monto : Math.min(pagado, monto)
+          paidAmount: kind === 'ingreso' ? montoFinal : Math.min(pagado, montoFinal)
         })
       }
       onClose()
@@ -227,8 +231,12 @@ export default function MovimientoEditorModal({
             placeholder="0,00"
             className="field"
           />
-          {monto !== null && monto > 0 && (
+          {monto !== null && monto > 0 ? (
             <p className="mt-1 text-xs text-text-muted">{formatARS(monto)}</p>
+          ) : (
+            <p className="mt-1 text-xs text-text-muted">
+              Podés dejarlo vacío si todavía no sabés cuánto.
+            </p>
           )}
         </div>
         <div>
