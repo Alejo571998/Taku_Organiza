@@ -11,6 +11,7 @@ import { addMonthsISO, formatCorto } from '@/lib/dates'
 import { itemColor, pastel } from '@/lib/palette'
 import type { PaletteKey } from '@/lib/palette'
 import { useTaku } from '@/components/taku/TakuProvider'
+import { urlGoogleCalendar, descargarIcs, eventoDeItem } from '@/lib/calendario'
 import ColorSwatches from '@/components/ui/ColorSwatches'
 import Modal from '@/components/ui/Modal'
 import type { TabWithFields } from '@/lib/queries/tabs'
@@ -43,6 +44,8 @@ export default function ItemEditorModal({
   const [tabId, setTabId] = useState(item?.tab_id ?? defaultTabId ?? tabs[0]?.id ?? '')
   const [title, setTitle] = useState(item?.title ?? '')
   const [date, setDate] = useState(item?.date ?? defaultDate)
+  // La hora llega como HH:MM:SS de la base y el input quiere HH:MM.
+  const [hora, setHora] = useState((item?.time ?? '').slice(0, 5))
   const [nota, setNota] = useState(item?.note ?? '')
   const [color, setColor] = useState<PaletteKey | null>(item?.color ?? null)
   const [customData, setCustomData] = useState<Record<string, unknown>>(item?.custom_data ?? {})
@@ -89,6 +92,7 @@ export default function ItemEditorModal({
         tabId,
         title: title.trim(),
         date,
+        time: hora || null,
         note: nota,
         color,
         // Solo se guardan las claves de los campos que la pestaña tiene hoy:
@@ -210,14 +214,28 @@ export default function ItemEditorModal({
         />
       </div>
 
-      <div>
-        <label className={label}>Fecha</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="field"
-        />
+      <div className="grid grid-cols-[1fr_auto] gap-3">
+        <div>
+          <label className={label}>Fecha</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="field"
+          />
+        </div>
+        <div>
+          {/* Opcional: la mayoría de las tareas no tienen horario y pedirlo
+              sería ponerle fricción a lo que más se usa. Pero una reunión sin
+              hora, en un calendario, cae como evento de día entero. */}
+          <label className={label}>Hora</label>
+          <input
+            type="time"
+            value={hora}
+            onChange={(e) => setHora(e.target.value)}
+            className="field w-32"
+          />
+        </div>
       </div>
 
       <div>
@@ -390,6 +408,60 @@ export default function ItemEditorModal({
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Pasar la tarea al calendario.
+
+          Esto NO sincroniza: abre el calendario con el evento ya cargado y la
+          persona confirma. A cambio, funciona hoy sin configurar nada y sin
+          que TAKU tenga acceso permanente a su agenda, que para un calendario
+          personal no es poca cosa.
+
+          Solo al editar: en una tarea que todavía no se guardó, mandarla al
+          calendario daría a entender que ya quedó guardada acá. */}
+      {item && (
+        <div className="rounded-xl bg-white/[0.05] px-3 py-2.5">
+          <p className="mb-2 text-xs text-text-secondary">
+            {hora
+              ? 'Se agrega a las ' + hora + ', con una hora de duración.'
+              : 'Sin hora se agrega como evento de día entero.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                window.open(
+                  urlGoogleCalendar({
+                    titulo: title.trim() || item.title,
+                    fecha: date,
+                    hora: hora || null,
+                    detalle: eventoDeItem(item, activeTab?.name).detalle
+                  }),
+                  '_blank',
+                  'noopener'
+                )
+              }
+              className="btn-ghost px-3 py-1.5 text-xs"
+            >
+              Agregar a Google Calendar
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                descargarIcs({
+                  titulo: title.trim() || item.title,
+                  fecha: date,
+                  hora: hora || null,
+                  detalle: eventoDeItem(item, activeTab?.name).detalle
+                })
+              }
+              className="btn-ghost px-3 py-1.5 text-xs"
+              title="Para Apple Calendar, Outlook y cualquier otro"
+            >
+              Bajar .ics
+            </button>
+          </div>
         </div>
       )}
 

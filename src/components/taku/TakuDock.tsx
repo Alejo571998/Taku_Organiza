@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useItems } from '@/hooks/useItems'
-import { todayISO } from '@/lib/dates'
+import { useQueryClient } from '@tanstack/react-query'
+import { useItems, itemsKey } from '@/hooks/useItems'
+import { movimientosKey } from '@/hooks/useFinanzas'
+import { habitosKey, marcasKey } from '@/hooks/useHabitos'
+import { fetchItems } from '@/lib/queries/items'
+import { fetchTabs } from '@/lib/queries/tabs'
+import { fetchMovements } from '@/lib/queries/finanzas'
+import { fetchHabits, fetchHabitLogs } from '@/lib/queries/habitos'
+import { armarResumen } from '@/lib/resumenDelDia'
+import { hablar, callarVoz, despertarVoz, puedeHablar } from '@/lib/voz'
+import { todayISO, addDays } from '@/lib/dates'
 import TakuImage from './TakuImage'
 import { useTaku } from './TakuProvider'
 
@@ -23,15 +32,36 @@ import { useTaku } from './TakuProvider'
  * el campo de texto y las respuestas entran por el mismo historial.
  */
 export default function TakuDock() {
-  const { estado, mensaje, historial, panelAbierto, decir, callar, abrirPanel, cerrarPanel } =
-    useTaku()
+  const {
+    estado,
+    mensaje,
+    historial,
+    panelAbierto,
+    decir,
+    reaccionar,
+    callar,
+    abrirPanel,
+    cerrarPanel
+  } = useTaku()
   const navigate = useNavigate()
 
   const hoy = todayISO()
   const { data: itemsHoy } = useItems(hoy, hoy)
   const pendientes = itemsHoy?.filter((i) => !i.completed).length ?? 0
 
+  const queryClient = useQueryClient()
   const [scrolleando, setScrolleando] = useState(false)
+  const [pensando, setPensando] = useState(false)
+
+  // La voz arranca encendida pero se recuerda apagada: alguien que la apaga
+  // no quiere que vuelva sola en la próxima visita.
+  const [vozActiva, setVozActiva] = useState(() => {
+    try {
+      return window.localStorage.getItem('taku:voz') !== '0'
+    } catch {
+      return true
+    }
+  })
   const pendientesPrevio = useRef<number | null>(null)
 
   // --- Saludo del día -------------------------------------------------------
@@ -100,6 +130,83 @@ export default function TakuDock() {
   // Si Taku tiene algo que decir no se esconde, o el mensaje se perdería.
   const escondido = scrolleando && !panelAbierto && !mensaje
 
+  function alternarVoz() {
+    setVozActiva((previo) => {
+      const siguiente = !previo
+      try {
+        window.localStorage.setItem('taku:voz', siguiente ? '1' : '0')
+      } catch {
+        /* sin memoria: como mucho vuelve encendida la próxima vez */
+      }
+      if (!siguiente) callarVoz()
+      return siguiente
+    })
+  }
+
+  /**
+   * El resumen del día: lo que queda por hacer, lo que vence y los hábitos
+   * que faltan, en una frase.
+   *
+   * Los datos se piden ACÁ y no con hooks arriba del componente: el dock está
+   * en todas las pantallas, y tener cinco consultas corriendo siempre para una
+   * pregunta que se hace una vez al día sería cobrarle a toda la app el costo
+   * de un botón. fetchQuery reusa lo que ya esté en caché.
+   */
+  async function contarElDia() {
+    // La chispa de voz va primero y sin await: iOS solo deja hablar dentro
+    // del gesto que lo pidió, y abajo hay que esperar a la red.
+    if (vozActiva) despertarVoz()
+
+    setPensando(true)
+    reaccionar('pensando', 6000)
+    try {
+      // Dos meses hacia atrás para las cuentas vencidas: una deuda de hace
+      // tres semanas sigue siendo deuda de hoy.
+      const desde = addDays(hoy, -60)
+      const [tareas, pestanas, movs, habitos, marcas] = await Promise.all([
+        queryClient.fetchQuery({ queryKey: itemsKey(hoy, hoy), queryFn: () => fetchItems(hoy, hoy) }),
+        queryClient.fetchQuery({ queryKey: ['tabs'], queryFn: fetchTabs }),
+        queryClient.fetchQuery({
+          queryKey: movimientosKey(desde, hoy),
+          queryFn: () => fetchMovements(desde, hoy)
+        }),
+        queryClient.fetchQuery({ queryKey: habitosKey, queryFn: fetchHabits }),
+        queryClient.fetchQuery({
+          queryKey: marcasKey(hoy, hoy),
+          queryFn: () => fetchHabitLogs(hoy, hoy)
+        })
+      ])
+
+      const resumen = armarResumen({
+        tareas,
+        pestanas,
+        movimientos: movs,
+        habitos,
+        cumplidos: new Set(marcas.map((m) => `${m.habit_id}|${m.date}`)),
+        hoy
+      })
+
+      cerrarPanel()
+      decir({
+        prioridad: 1,
+        estado: resumen.todoListo ? 'festejando' : 'saludando',
+        texto: resumen.escrito,
+        // Más largo que un aviso común: es un texto para leer, no un cartel.
+        duracion: 16000,
+        acciones: [{ texto: 'Ver el día', onClick: () => navigate('/dia') }]
+      })
+      if (vozActiva) hablar(resumen.hablado)
+    } catch {
+      decir({
+        prioridad: 1,
+        estado: 'alerta',
+        texto: 'No pude leer tu día. Fijate la conexión y probá de nuevo.'
+      })
+    } finally {
+      setPensando(false)
+    }
+  }
+
   function irA(ruta: string) {
     navigate(ruta)
     cerrarPanel()
@@ -107,21 +214,7 @@ export default function TakuDock() {
 
   const atajos = [
     { texto: 'Nueva tarea', al: () => irA('/dia?nueva=1') },
-    {
-      texto: 'Qué tengo hoy',
-      al: () => {
-        navigate('/dia')
-        cerrarPanel()
-        decir({
-          prioridad: 1,
-          estado: pendientes === 0 ? 'festejando' : 'saludando',
-          texto:
-            pendientes === 0
-              ? 'Hoy no te queda nada pendiente.'
-              : `Te quedan ${pendientes} tarea${pendientes === 1 ? '' : 's'} para hoy.`
-        })
-      }
-    },
+    { texto: pensando ? 'Mirando…' : 'Resumen de hoy', al: contarElDia },
     { texto: 'Esta semana', al: () => irA('/semana') },
     { texto: 'Gastos', al: () => irA('/gastos') }
   ]
@@ -145,6 +238,26 @@ export default function TakuDock() {
               <p className="text-sm font-semibold leading-tight">Taku</p>
               <p className="text-[11px] leading-tight text-text-muted">Te sigue el día</p>
             </div>
+            {/* La voz se puede apagar. Alguien en una oficina, en un colectivo
+                o que simplemente prefiere leer no tiene por qué pelearse con
+                una app que habla. */}
+            {puedeHablar() && (
+              <button
+                onClick={alternarVoz}
+                aria-pressed={vozActiva}
+                aria-label={vozActiva ? 'Apagar la voz de Taku' : 'Encender la voz de Taku'}
+                title={vozActiva ? 'Voz encendida' : 'Voz apagada'}
+                className={`grid h-7 w-7 place-items-center rounded-lg transition-colors hover:bg-white/5 ${
+                  vozActiva ? 'text-accent-text' : 'text-text-muted'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                  {vozActiva ? <path d="M15.5 8.5a5 5 0 0 1 0 7" /> : <path d="m16 9 5 6m0-6-5 6" />}
+                </svg>
+              </button>
+            )}
+
             <button
               onClick={cerrarPanel}
               aria-label="Cerrar a Taku"
@@ -217,6 +330,22 @@ export default function TakuDock() {
         >
           <div className="flex items-start gap-2">
             <p className="flex-1 text-sm leading-snug text-text-primary">{mensaje.texto}</p>
+
+            {/* Volver a escucharlo, sin tener que pedir el resumen de nuevo. */}
+            {puedeHablar() && (
+              <button
+                onClick={() => hablar(mensaje.texto)}
+                aria-label="Leer en voz alta"
+                title="Leer en voz alta"
+                className="-mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary"
+              >
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                </svg>
+              </button>
+            )}
+
             <button
               onClick={callar}
               aria-label="Cerrar el mensaje"

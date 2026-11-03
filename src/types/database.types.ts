@@ -35,6 +35,8 @@ export interface Item {
   tab_id: string
   title: string
   date: string
+  /** HH:MM:SS. null = la tarea no tiene horario, que es lo normal. */
+  time: string | null
   completed: boolean
   sort_order: number
   custom_data: Record<string, unknown>

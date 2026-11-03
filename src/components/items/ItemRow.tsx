@@ -69,6 +69,16 @@ export default function ItemRow({ item, tab, onToggle, onEdit, trailing }: Props
           {item.recurrence && (
             <RepeatIcon className="shrink-0" style={{ color: pastel(c, 0.8) }} />
           )}
+          {/* La hora va adelante y tabular: alineada, la columna de horarios
+              se lee de un vistazo sin tener que entrar en cada título. */}
+          {item.time && (
+            <span
+              className="shrink-0 text-xs font-semibold tabular-nums"
+              style={{ color: pastel(c, 1) }}
+            >
+              {item.time.slice(0, 5)}
+            </span>
+          )}
           <span className="truncate">{item.title}</span>
         </span>
         {detalle && <span className="mt-0.5 block text-xs text-text-secondary">{detalle}</span>}
