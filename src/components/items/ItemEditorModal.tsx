@@ -11,7 +11,7 @@ import { addMonthsISO, formatCorto } from '@/lib/dates'
 import { itemColor, pastel } from '@/lib/palette'
 import type { PaletteKey } from '@/lib/palette'
 import { useTaku } from '@/components/taku/TakuProvider'
-import { urlGoogleCalendar, descargarIcs, eventoDeItem } from '@/lib/calendario'
+import { urlGoogleCalendar, descargarIcs, detalleDeEvento } from '@/lib/calendario'
 import ColorSwatches from '@/components/ui/ColorSwatches'
 import Modal from '@/components/ui/Modal'
 import type { TabWithFields } from '@/lib/queries/tabs'
@@ -76,6 +76,16 @@ export default function ItemEditorModal({
     setCustomData((prev) => ({ ...prev, [fieldId]: value }))
   }
 
+  /** El evento como está el formulario ahora, no como se guardó la última vez. */
+  function evento() {
+    return {
+      titulo: title.trim() || item?.title || 'Tarea',
+      fecha: date,
+      hora: hora || null,
+      detalle: detalleDeEvento(nota, activeTab?.name)
+    }
+  }
+
   async function handleSubmit() {
     if (!title.trim()) {
       setError('Ponele un título al ítem.')
@@ -126,6 +136,25 @@ export default function ItemEditorModal({
             itemId: item.id,
             recurrence: repeticion || null,
             until: repeticion ? hasta : null
+          })
+        }
+
+        // Una tarea con hora es una cita, y una cita se quiere en el
+        // calendario. Acá es el momento de ofrecerlo: recién creada, que es
+        // cuando se piensa en eso. En el editor los botones también están,
+        // pero nadie vuelve a abrir una tarea para buscarlos.
+        if (!item && datos.time) {
+          taku.decir({
+            prioridad: 1,
+            duracion: 14_000,
+            texto: `Guardé "${datos.title}" para el ${formatCorto(date)} a las ${hora}.`,
+            acciones: [
+              {
+                texto: 'Agregar al calendario',
+                onClick: () =>
+                  window.open(urlGoogleCalendar(evento()), '_blank', 'noopener')
+              }
+            ]
           })
         }
       }
@@ -422,40 +451,27 @@ export default function ItemEditorModal({
           calendario daría a entender que ya quedó guardada acá. */}
       {item && (
         <div className="rounded-xl bg-white/[0.05] px-3 py-2.5">
+          <span className={label}>Calendario</span>
           <p className="mb-2 text-xs text-text-secondary">
             {hora
-              ? 'Se agrega a las ' + hora + ', con una hora de duración.'
+              ? `Se agrega a las ${hora}, con una hora de duración.`
               : 'Sin hora se agrega como evento de día entero.'}
+            {/* Una serie se guarda como una fila por fecha, así que el pase
+                manda la fecha que está abierta y nada más. Decirlo evita que
+                alguien crea que mandó la repetición entera. */}
+            {item.series_id ? ' Se agrega solo esta fecha, no toda la repetición.' : ''}
           </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() =>
-                window.open(
-                  urlGoogleCalendar({
-                    titulo: title.trim() || item.title,
-                    fecha: date,
-                    hora: hora || null,
-                    detalle: eventoDeItem(item, activeTab?.name).detalle
-                  }),
-                  '_blank',
-                  'noopener'
-                )
-              }
+              onClick={() => window.open(urlGoogleCalendar(evento()), '_blank', 'noopener')}
               className="btn-ghost px-3 py-1.5 text-xs"
             >
               Agregar a Google Calendar
             </button>
             <button
               type="button"
-              onClick={() =>
-                descargarIcs({
-                  titulo: title.trim() || item.title,
-                  fecha: date,
-                  hora: hora || null,
-                  detalle: eventoDeItem(item, activeTab?.name).detalle
-                })
-              }
+              onClick={() => descargarIcs(evento())}
               className="btn-ghost px-3 py-1.5 text-xs"
               title="Para Apple Calendar, Outlook y cualquier otro"
             >

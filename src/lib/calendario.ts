@@ -1,5 +1,3 @@
-import type { Item } from '@/types/database.types'
-
 /**
  * Pasar una tarea al calendario.
  *
@@ -42,14 +40,17 @@ export interface EventoParaCalendario {
   detalle?: string | null
 }
 
-export function eventoDeItem(item: Item, nombreDePestana?: string): EventoParaCalendario {
-  const partes = [item.note, nombreDePestana ? `Pestaña: ${nombreDePestana}` : null]
-  return {
-    titulo: item.title,
-    fecha: item.date,
-    hora: item.time,
-    detalle: [...partes.filter(Boolean), 'Creado en TAKU'].join('\n')
-  }
+/**
+ * El cuerpo del evento. Va aparte porque también se arma para una tarea que
+ * recién se guardó, cuando todavía no hay fila que leer.
+ */
+export function detalleDeEvento(
+  nota?: string | null,
+  nombreDePestana?: string | null
+): string {
+  return [nota, nombreDePestana ? `Pestaña: ${nombreDePestana}` : null, 'Creado en TAKU']
+    .filter(Boolean)
+    .join('\n')
 }
 
 export function urlGoogleCalendar(evento: EventoParaCalendario): string {
@@ -109,6 +110,7 @@ export function archivoIcs(evento: EventoParaCalendario): string {
     'END:VCALENDAR'
   ]
     .filter(Boolean)
+    .map(plegar)
     .join('\r\n')
 }
 
@@ -117,12 +119,57 @@ function escapar(texto: string): string {
   return texto.replace(/\\/g, '\\\\').replace(/[,;]/g, (c) => `\\${c}`).replace(/\n/g, '\\n')
 }
 
+/**
+ * Parte las líneas largas como manda el formato: 75 octetos, y la
+ * continuación arranca con un espacio. Una nota larga pasa ese límite sin
+ * esfuerzo, y algunos lectores recortan la línea o rechazan el archivo.
+ *
+ * Se corta por caracter y se cuenta por byte: en UTF-8 una "é" ocupa dos, y
+ * partirla al medio deja basura donde iba una letra.
+ */
+function plegar(linea: string): string {
+  const medir = (t: string) => new TextEncoder().encode(t).length
+  if (medir(linea) <= 75) return linea
+
+  const partes: string[] = []
+  let actual = ''
+  let largo = 0
+  for (const caracter of linea) {
+    const n = medir(caracter)
+    // La primera línea admite 75; las siguientes 74, porque el espacio de
+    // continuación también cuenta.
+    const tope = partes.length === 0 ? 75 : 74
+    if (largo + n > tope) {
+      partes.push(actual)
+      actual = ''
+      largo = 0
+    }
+    actual += caracter
+    largo += n
+  }
+  partes.push(actual)
+  return partes.join('\r\n ')
+}
+
 export function descargarIcs(evento: EventoParaCalendario) {
   const blob = new Blob([archivoIcs(evento)], { type: 'text/calendar;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
   a.download = `${evento.titulo.replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 40) || 'tarea'}.ics`
+
+  // Dos cuidados que parecen de más y no lo son:
+  //
+  // El ancla tiene que estar en el documento. Firefox ignora el click de un
+  // nodo que nunca se agregó, así que ahí no pasaba nada: ni archivo ni error.
+  //
+  // Y la URL se libera DESPUÉS, no en la misma vuelta. Revocarla al toque
+  // corta el blob antes de que la descarga lo lea, y el archivo baja vacío.
+  a.style.display = 'none'
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  window.setTimeout(() => {
+    a.remove()
+    URL.revokeObjectURL(url)
+  }, 250)
 }
