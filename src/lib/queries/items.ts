@@ -102,33 +102,55 @@ export async function deleteItem(id: string): Promise<void> {
   if (error) throw error
 }
 
-/**
- * Mueve una tarea a otra fecha.
- *
- * Va al final del día que la recibe. Conservar su `sort_order` viejo la
- * metería en el medio de una lista que ya estaba ordenada, en un lugar que
- * nadie eligió.
- */
-export async function moverItemAFecha(id: string, fecha: string): Promise<void> {
-  const { data: ultimo, error: errorUltimo } = await supabase
+/** El `sort_order` que sigue al último de ese día. */
+async function proximoSortOrder(fecha: string): Promise<number> {
+  const { data, error } = await supabase
     .from('items')
     .select('sort_order')
     .eq('date', fecha)
     .order('sort_order', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (errorUltimo) throw errorUltimo
-
-  // El select no sobra: un update que no toca ninguna fila (sesión vencida,
-  // ítem borrado desde otro dispositivo) vuelve sin error, y sin esto Taku
-  // avisaría "la pasé para mañana" de algo que sigue donde estaba.
-  const { error } = await supabase
-    .from('items')
-    .update({ date: fecha, sort_order: (ultimo?.sort_order ?? -1) + 1 })
-    .eq('id', id)
-    .select('id')
-    .single()
   if (error) throw error
+  return (data?.sort_order ?? -1) + 1
+}
+
+/**
+ * Mueve tareas a otra fecha y devuelve las que efectivamente se movieron.
+ *
+ * Van al final del día que las recibe, en el orden en que venían. Conservar
+ * su `sort_order` viejo las metería en el medio de una lista que ya estaba
+ * ordenada, en un lugar que nadie eligió.
+ *
+ * Tira solo si no se movió ninguna: en una tanda, que una falle no invalida
+ * a las otras, y quien llama necesita saber cuántas pasaron de verdad.
+ */
+export async function moverItemsAFecha(ids: string[], fecha: string): Promise<string[]> {
+  if (ids.length === 0) return []
+  const base = await proximoSortOrder(fecha)
+
+  const resultados = await Promise.all(
+    ids.map((id, i) =>
+      supabase
+        .from('items')
+        .update({ date: fecha, sort_order: base + i })
+        .eq('id', id)
+        // El select no sobra: un update que no toca ninguna fila (sesión
+        // vencida, ítem borrado desde otro dispositivo) vuelve sin error, y
+        // sin esto Taku avisaría "la pasé para mañana" de algo que sigue
+        // donde estaba.
+        .select('id')
+        .single()
+    )
+  )
+
+  const movidos = ids.filter((_, i) => !resultados[i].error)
+  if (movidos.length === 0) throw resultados[0].error ?? new Error('No se movió ninguna tarea.')
+  return movidos
+}
+
+export async function moverItemAFecha(id: string, fecha: string): Promise<void> {
+  await moverItemsAFecha([id], fecha)
 }
 
 /** Si una serie ya tiene una ocurrencia ese día. Evita duplicar el renglón. */

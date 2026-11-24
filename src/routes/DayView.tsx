@@ -4,7 +4,14 @@ import { useTabs } from '@/hooks/useTabs'
 import { useItems, useToggleItem, useReorderItems, itemsKey } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
 import { usePosponerItem } from '@/hooks/usePosponerItem'
-import { addDays, formatLargo, esHoy, todayISO } from '@/lib/dates'
+import {
+  addDays,
+  formatLargo,
+  esHoy,
+  todayISO,
+  nombreDeDia,
+  destinoAlPosponer
+} from '@/lib/dates'
 import { itemColor, pastel } from '@/lib/palette'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
 import ItemRow from '@/components/items/ItemRow'
@@ -20,12 +27,14 @@ export default function DayView() {
   const rangoKey = itemsKey(date, date)
   const toggle = useToggleItem(rangoKey)
   const reorder = useReorderItems(rangoKey)
-  const { posponer, enCurso } = usePosponerItem()
+  const { posponer, enCurso, posponerTanda, tandaEnCurso } = usePosponerItem()
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
   const [params, setParams] = useSearchParams()
 
   const tabsById = new Map((tabs ?? []).map((t) => [t.id, t]))
-  const pendientes = items?.filter((i) => !i.completed).length ?? 0
+  const sinHacer = items?.filter((i) => !i.completed) ?? []
+  const pendientes = sinHacer.length
+  const puedePosponerTanda = pendientes >= 2 && date <= todayISO()
 
   /**
    * El atajo "Nueva tarea" de Taku llega como ?nueva=1, porque el editor vive
@@ -150,6 +159,22 @@ export default function DayView() {
             )
           })}
         </SortableList>
+      )}
+
+      {/* Pasar toda la tanda que quedó.
+          Aparece recién con dos pendientes: con una sola, la flecha de esa
+          fila está ahí al lado y este botón sería el mismo gesto dos veces.
+          Y no en un día futuro: ahí todavía no quedó nada, falta que pase. */}
+      {puedePosponerTanda && (
+        <button
+          onClick={() => posponerTanda(sinHacer)}
+          disabled={tandaEnCurso}
+          className="btn-ghost mt-3 w-full py-2.5 text-sm disabled:opacity-50"
+        >
+          {tandaEnCurso
+            ? 'Pasando…'
+            : `Pasar las ${sinHacer.length} pendientes para ${nombreDeDia(destinoAlPosponer(date))}`}
+        </button>
       )}
 
       {editing && tabs && (
