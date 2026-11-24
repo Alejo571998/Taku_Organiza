@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useTabs } from '@/hooks/useTabs'
 import { useItems, useToggleItem, useReorderItems, itemsKey } from '@/hooks/useItems'
 import { useSelectedDate } from '@/hooks/useSelectedDate'
+import { usePosponerItem } from '@/hooks/usePosponerItem'
 import { addDays, formatLargo, esHoy, todayISO } from '@/lib/dates'
 import { itemColor, pastel } from '@/lib/palette'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
@@ -19,6 +20,7 @@ export default function DayView() {
   const rangoKey = itemsKey(date, date)
   const toggle = useToggleItem(rangoKey)
   const reorder = useReorderItems(rangoKey)
+  const { posponer, enCurso } = usePosponerItem()
   const [editing, setEditing] = useState<Item | 'new' | null>(null)
   const [params, setParams] = useSearchParams()
 
@@ -132,6 +134,8 @@ export default function DayView() {
                 tab={tab}
                 onToggle={(completed) => toggle.mutate({ id: item.id, completed })}
                 onEdit={() => setEditing(item)}
+                onPosponer={() => posponer(item)}
+                posponiendo={enCurso(item.id)}
                 trailing={
                   tab && (
                     <span

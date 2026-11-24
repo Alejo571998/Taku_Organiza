@@ -102,6 +102,48 @@ export async function deleteItem(id: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Mueve una tarea a otra fecha.
+ *
+ * Va al final del día que la recibe. Conservar su `sort_order` viejo la
+ * metería en el medio de una lista que ya estaba ordenada, en un lugar que
+ * nadie eligió.
+ */
+export async function moverItemAFecha(id: string, fecha: string): Promise<void> {
+  const { data: ultimo, error: errorUltimo } = await supabase
+    .from('items')
+    .select('sort_order')
+    .eq('date', fecha)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (errorUltimo) throw errorUltimo
+
+  // El select no sobra: un update que no toca ninguna fila (sesión vencida,
+  // ítem borrado desde otro dispositivo) vuelve sin error, y sin esto Taku
+  // avisaría "la pasé para mañana" de algo que sigue donde estaba.
+  const { error } = await supabase
+    .from('items')
+    .update({ date: fecha, sort_order: (ultimo?.sort_order ?? -1) + 1 })
+    .eq('id', id)
+    .select('id')
+    .single()
+  if (error) throw error
+}
+
+/** Si una serie ya tiene una ocurrencia ese día. Evita duplicar el renglón. */
+export async function haySerieEnFecha(seriesId: string, fecha: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('items')
+    .select('id')
+    .eq('series_id', seriesId)
+    .eq('date', fecha)
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return Boolean(data)
+}
+
 /** Persiste el orden nuevo de los ítems. `ids` va en el orden deseado. */
 export async function reorderItems(ids: string[]): Promise<void> {
   const { error } = await supabase.rpc('reorder_items', { p_ids: ids })

@@ -146,3 +146,30 @@ export function addMonthsISO(iso: string, meses: number): string {
   if (d.getDate() !== diaOriginal) d.setDate(0)
   return toISODate(d)
 }
+
+// ---------- pasar una tarea para otro día ----------
+
+/**
+ * Cómo se nombra un día cuando se le habla a la persona: "hoy", "mañana" o
+ * "el 25 nov". Decirle la fecha de un día que tiene nombre suena a máquina.
+ */
+export function nombreDeDia(iso: string): string {
+  const hoy = todayISO()
+  if (iso === hoy) return 'hoy'
+  if (iso === addDays(hoy, 1)) return 'mañana'
+  if (iso === addDays(hoy, -1)) return 'ayer'
+  return `el ${formatCorto(iso)}`
+}
+
+/**
+ * A qué día va una tarea que no se hizo: el siguiente al suyo.
+ *
+ * Con una salvedad: nunca a un día que ya pasó. Lo que quedó colgado de la
+ * semana pasada no sirve de nada mudarlo al martes pasado, donde seguiría
+ * invisible; va a hoy, que es cuando se puede hacer algo al respecto.
+ */
+export function destinoAlPosponer(fecha: string): string {
+  const siguiente = addDays(fecha, 1)
+  const hoy = todayISO()
+  return siguiente > hoy ? siguiente : hoy
+}

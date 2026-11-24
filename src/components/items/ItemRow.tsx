@@ -4,6 +4,7 @@ import RepeatIcon from '@/components/ui/RepeatIcon'
 import NoteToggle from '@/components/ui/NoteToggle'
 import { itemColor, pastel } from '@/lib/palette'
 import { itemSummary } from '@/lib/itemSummary'
+import { destinoAlPosponer, nombreDeDia } from '@/lib/dates'
 import type { TabWithFields } from '@/lib/queries/tabs'
 import type { Item } from '@/types/database.types'
 
@@ -12,6 +13,10 @@ interface Props {
   tab: TabWithFields | undefined
   onToggle: (completed: boolean) => void
   onEdit: () => void
+  /** Si viene, la fila ofrece pasar la tarea al día siguiente. */
+  onPosponer?: () => void
+  /** Hay un movimiento en curso: no se puede tocar dos veces. */
+  posponiendo?: boolean
   /** Se dibuja a la derecha: la pestaña en Día, la fecha en la lista. */
   trailing?: ReactNode
 }
@@ -31,7 +36,15 @@ interface Props {
  * Va en backgroundImage y no en background: background pisaría el color de
  * .glass y la fila perdería su superficie de vidrio.
  */
-export default function ItemRow({ item, tab, onToggle, onEdit, trailing }: Props) {
+export default function ItemRow({
+  item,
+  tab,
+  onToggle,
+  onEdit,
+  onPosponer,
+  posponiendo,
+  trailing
+}: Props) {
   const c = itemColor(item.color, tab?.color)
   const detalle = itemSummary(item, tab)
 
@@ -86,7 +99,53 @@ export default function ItemRow({ item, tab, onToggle, onEdit, trailing }: Props
 
       {item.note && <NoteToggle note={item.note} color={c} />}
 
+      {/* Pasar la tarea al día siguiente.
+          Solo si está pendiente: una tarea hecha no se pospone, y el botón
+          ahí al lado del tilde sería una invitación a equivocarse.
+          Se ve siempre, no al pasar el mouse: en un teléfono no hay mouse, y
+          esconderlo detrás de un hover lo volvería invisible justo donde más
+          se usa.
+          Y mide 36px de alto aunque el ícono tenga 15: con el dedo, un blanco
+          del tamaño del dibujo se falla la mitad de las veces. */}
+      {onPosponer && !item.completed && (
+        <button
+          type="button"
+          onClick={onPosponer}
+          disabled={posponiendo}
+          className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-full text-text-secondary transition-colors hover:bg-white/10 hover:text-text-primary disabled:opacity-40"
+          title={`Pasar para ${nombreDeDia(destinoAlPosponer(item.date))}`}
+          aria-label={`Pasar "${item.title}" para ${nombreDeDia(destinoAlPosponer(item.date))}`}
+        >
+          <FlechaAlDiaSiguiente />
+        </button>
+      )}
+
       {trailing}
     </SortableRow>
+  )
+}
+
+/**
+ * Flecha que termina contra una pared: "mandá esto al día que viene".
+ * En SVG y no con una flecha de texto, por lo mismo que el resto de los
+ * íconos: la tipografía de la app no trae esos glifos.
+ */
+function FlechaAlDiaSiguiente() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="15"
+      height="15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 12h11" />
+      <path d="M11 7l5 5-5 5" />
+      <path d="M20 5v14" />
+    </svg>
   )
 }

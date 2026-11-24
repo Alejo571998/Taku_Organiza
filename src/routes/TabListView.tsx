@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTabs } from '@/hooks/useTabs'
 import { useItemsByTab, useToggleItem, useReorderItems, itemsByTabKey } from '@/hooks/useItems'
+import { usePosponerItem } from '@/hooks/usePosponerItem'
 import { formatCorto, todayISO, esHoy } from '@/lib/dates'
 import { pastel, safeColor } from '@/lib/palette'
 import ItemEditorModal from '@/components/items/ItemEditorModal'
@@ -23,6 +24,7 @@ export default function TabListView() {
   const { data: items, isLoading, error } = useItemsByTab(tabId)
   const toggle = useToggleItem(key)
   const reorder = useReorderItems(key)
+  const { posponer, enCurso } = usePosponerItem()
 
   const [editandoItem, setEditandoItem] = useState<Item | 'new' | null>(null)
   const [editandoTab, setEditandoTab] = useState(false)
@@ -97,6 +99,8 @@ export default function TabListView() {
               tab={tab}
               onToggle={(completed) => toggle.mutate({ id: item.id, completed })}
               onEdit={() => setEditandoItem(item)}
+              onPosponer={() => posponer(item)}
+              posponiendo={enCurso(item.id)}
               trailing={
                 <button
                   onClick={() => navigate(`/dia?d=${item.date}`)}
